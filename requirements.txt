@@ -2,3 +2,4 @@ spektral
 pyspice
 networkx
 numpy
+scipy
