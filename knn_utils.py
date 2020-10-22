@@ -44,12 +44,14 @@ class KNNModel():
     def __init__(self, points=[]):
         self.points = points
 
-    def closest(self, new_point):
+    def closest(self, new_point, k=1):
         dists = np.array([new_point.distance(point) for point in self.points])
-        #print('distances:')
-        #for (dist, pt) in zip(dists, self.points):
-            #print(pt, dist)
-        return self.points[dists.argmin()]
+        closest_indices = dists.argsort()[0:k]
+        return np.take(self.points, closest_indices)
 
-    def predict(self, new_point):
-        return self.closest(new_point).label
+    def predict(self, new_point, k=3):
+        points = self.closest(new_point, k)
+        labels = np.array([point.label for point in points])
+        _, counts = np.unique(labels, return_counts=True)
+        idx = np.argmax(counts)
+        return labels[idx]

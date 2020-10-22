@@ -23,11 +23,14 @@ for filename in filenames:
             circuit = parser.build_circuit()
             for element in circuit.elements:
                 point = ComponentPoint(element)
-                pred = model.closest(point)
-                if pred.label == point.label:
+                y_pred = model.predict(point, 1)
+                # pred = model.closest(point)[0]
+                # if pred.label == point.label:
+                if y_pred == point.label:
                     correct += 1
                 total += 1
-        except:
+        except Exception as e:
+            print('failed to parse', filename, e)
             pass
 
 print('Accuracy:', correct/total)
