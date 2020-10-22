@@ -23,8 +23,8 @@ for filename in filenames:
             circuit = parser.build_circuit()
             for element in circuit.elements:
                 point = ComponentPoint(element)
-                y_pred = model.predict(point)
-                if y_pred == point.label:
+                pred = model.closest(point)
+                if pred.label == point.label:
                     correct += 1
                 total += 1
         except:
