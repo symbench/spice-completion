@@ -9,7 +9,9 @@ class ComponentPoint():
     def pin_signature(self, pin):
         pins = ( p for p in list(pin.node.pins) if p is not pin )
         elements = ( pin.element for pin in pins )
-        return [ e.name[0] for e in elements ]
+        signature = [ e.name[0] for e in elements ]
+        signature.sort()
+        return signature
 
     def get_data(self, index):
         try:
@@ -43,6 +45,10 @@ def pad(l, length):
 class KNNModel():
     def __init__(self, points=[]):
         self.points = points
+
+    def matches(self, new_point):
+        dists = ((new_point.distance(point), point) for point in self.points)
+        return [ point for (dist, point) in dists if dist == 0 ]
 
     def closest(self, new_point, k=1):
         dists = np.array([new_point.distance(point) for point in self.points])

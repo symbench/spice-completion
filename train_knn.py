@@ -18,8 +18,8 @@ for filename in filenames:
         try:
             source = f.read().decode('utf-8', 'ignore')
             model.points.extend(get_component_points(source))
-        except:
-            pass
+        except Exception as e:
+            print(f'Unable to parse {filename}', e, file=sys.stderr)
 
 print('model has', len(model.points), 'points')
 pickle.dump(model, open('knn-model.pkl', 'wb'))
