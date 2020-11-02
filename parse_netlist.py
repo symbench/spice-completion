@@ -13,6 +13,22 @@ component_types = [
     Node,
 ]
 
+subcircuit_types = {}
+with open('subcircuit-types.txt', 'r') as f:
+    subcircuit_label_pairs = (line.split(' ') for line in f if len(line.split(' ')) == 2)
+    for (subcircuit, label) in subcircuit_label_pairs:
+        subcircuit_types[subcircuit] = label
+        if label not in component_types:
+            component_types.append(label)
+
+def get_component_type_index(element):
+    element_type = type(element)
+    if element_type is BasicElement.SubCircuitElement:
+        element_type = subcircuit_types.get(element.subcircuit_name, element_type)
+
+    return component_types.index(element_type)
+
+np.random.seed(1234)
 def load_netlist(textfile):
     parser = SpiceParser(source=textfile)
     circuit = parser.build_circuit()
@@ -24,7 +40,6 @@ def load_netlist(textfile):
         if element not in component_list:
             component_list.append(element)
 
-        # TODO: ignore the pins
         nodes = [ pin.node for pin in element.pins ]
         for node in nodes:
             if node not in component_list:
@@ -44,7 +59,7 @@ def load_netlist(textfile):
 
     adj = nx.adjacency_matrix(nx.from_dict_of_lists(adj))
 
-    element_types = np.array([ component_types.index(type(e)) for e in component_list ])
+    element_types = np.array([ get_component_type_index(e) for e in component_list ])
     X = np.zeros((element_types.size, len(component_types)))
     X[np.arange(element_types.size), element_types] = 1
 
@@ -53,19 +68,20 @@ def load_netlist(textfile):
     # For now, just mask out the first non-pin (second for validation)
     # TODO: Make the mask more intentional
     mask = np.ones(element_types.size)
-    nonPinIndices = [i for (i, element) in enumerate(component_list) if type(element) is not Node]
-    mask_index = nonPinIndices[0]
-    mask[mask_index] = 0
+    mask_idx = np.random.choice(element_types.size, element_types.size//2, replace=False)
+    mask[mask_idx] = 0
     train_mask = np.array(mask, dtype=np.bool)
 
     mask = np.ones(element_types.size)
-    mask_index = nonPinIndices[1]
-    mask[mask_index] = 0
+    # FIXME: this could contain elements from the training set
+    mask_idx = np.random.choice(element_types.size, element_types.size//2, replace=False)
+    mask[mask_idx] = 0
     val_mask = np.array(mask, dtype=np.bool)
 
     mask = np.ones(element_types.size)
-    mask_index = nonPinIndices[2]
-    mask[mask_index] = 0
+    # FIXME: this could contain elements from the training, val set
+    mask_idx = np.random.choice(element_types.size, element_types.size//2, replace=False)
+    mask[mask_idx] = 0
     test_mask = np.array(mask, dtype=np.bool)
 
     return adj, X, labels, train_mask, val_mask, test_mask
