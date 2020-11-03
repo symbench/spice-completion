@@ -12,6 +12,17 @@ component_types = [
     BasicElement.Mosfet,
     BasicElement.SubCircuitElement,
     Node,
+    BasicElement.Diode,
+    BasicElement.BehavioralInductor,
+    BasicElement.CurrentSource,
+    BasicElement.VoltageControlledCurrentSource,
+    BasicElement.VoltageControlledVoltageSource,
+    BasicElement.Capacitor,
+    BasicElement.CoupledInductor,
+    BasicElement.JunctionFieldEffectTransistor,
+    BasicElement.BipolarJunctionTransistor,
+    BasicElement.XSpiceElement,
+    BasicElement.BehavioralSource,
 ]
 
 subcircuit_types = {}
