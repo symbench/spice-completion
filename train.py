@@ -99,10 +99,6 @@ model.summary()
 
 # Train model
 validation_data = ([val_X, val_A], val_y)
-# TODO: 
-print('N', N)
-print('F', F)
-print('n_classes', n_classes)
 history = model.fit([train_X, train_A],
           train_y,
           #sample_weight=train_mask,
@@ -136,9 +132,6 @@ plt.savefig(f'model_loss_{args.name}.png')
 
 # Evaluate model
 print('Evaluating model.')
-print('test_X', test_X.shape)
-print('test_A', test_A.shape)
-print('test_y', test_y.shape)
 eval_results = model.evaluate([test_X, test_A], test_y)
                               #test_y)
                               #sample_weight=test_mask,
@@ -153,4 +146,16 @@ print('predicted shape', y_pred.argmax(2).shape)
 print('actual:\n', train_y.argmax(2))
 print('predicted:\n', y_pred.argmax(2))
 print('unknowns:\n', train_X.argmin(2))
-# TODO: Generate confusion matrix?
+pred_unk = train_X.argmin(2)*y_pred.argmax(2)
+act_unk = train_X.argmin(2)*train_y.argmax(2)
+print('predicted unknowns:\n', pred_unk)
+print('actual unknowns:\n', act_unk)
+
+y_pred = pred_unk[pred_unk.nonzero()]
+y_act = act_unk[act_unk.nonzero()]
+print('predicted unknowns:\n', y_pred)
+print('actual unknowns:\n', y_act)
+
+import scikitplot as skplt
+skplt.metrics.plot_confusion_matrix(y_act, y_pred)
+plt.savefig(f'confusion_matrix_{args.name}.png')
