@@ -98,10 +98,12 @@ model.compile(optimizer=optimizer,
 model.summary()
 
 # Train model
+unknowns = train_X.argmin(2)
+print('unknowns:\n', unknowns)
 validation_data = ([val_X, val_A], val_y)
 history = model.fit([train_X, train_A],
           train_y,
-          #sample_weight=train_mask,
+          sample_weight=unknowns,
           epochs=epochs,
           #batch_size=N,
           validation_split=0.1,
@@ -140,22 +142,27 @@ print('Done.\n'
       'Test loss: {}\n'
       'Test accuracy: {}'.format(*eval_results))
 
-y_pred = model.predict([train_X, train_A])
-print('y_pred shape', y_pred.shape)
-print('predicted shape', y_pred.argmax(2).shape)
-print('actual:\n', train_y.argmax(2))
-print('predicted:\n', y_pred.argmax(2))
-print('unknowns:\n', train_X.argmin(2))
-pred_unk = train_X.argmin(2)*y_pred.argmax(2)
-act_unk = train_X.argmin(2)*train_y.argmax(2)
-print('predicted unknowns:\n', pred_unk)
-print('actual unknowns:\n', act_unk)
-
-y_pred = pred_unk[pred_unk.nonzero()]
-y_act = act_unk[act_unk.nonzero()]
-print('predicted unknowns:\n', y_pred)
-print('actual unknowns:\n', y_act)
-
 import scikitplot as skplt
-skplt.metrics.plot_confusion_matrix(y_act, y_pred)
-plt.savefig(f'confusion_matrix_{args.name}.png')
+def plot_confusion_matrix(A, X, y):
+    plt.clf()
+    y_pred = model.predict([X, A])
+    pred_unk = X.argmin(2)*y_pred.argmax(2)
+    act_unk = X.argmin(2)*y.argmax(2)
+    y_pred = pred_unk[pred_unk.nonzero()]
+    y_act = act_unk[act_unk.nonzero()]
+    print('  actual unknowns:\t', y_act)
+    print('  predicted unknowns:\t', y_pred)
+    skplt.metrics.plot_confusion_matrix(y_act, y_pred)
+
+print('Generating confusion matrices...')
+print('train:')
+plot_confusion_matrix(train_A, train_X, train_y)
+plt.savefig(f'train_confusion_matrix_{args.name}.png')
+
+print('val:')
+plot_confusion_matrix(val_A, val_X, val_y)
+plt.savefig(f'val_confusion_matrix_{args.name}.png')
+
+print('test:')
+plot_confusion_matrix(test_A, test_X, test_y)
+plt.savefig(f'test_confusion_matrix_{args.name}.png')
