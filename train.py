@@ -77,7 +77,6 @@ graph_attention_1 = GraphAttention(channels,
                                    activation='elu',
                                    kernel_regularizer=l2(l2_reg),
                                    attn_kernel_regularizer=l2(l2_reg),
-                                   name='firstGAT',
                                    )([dropout_1, A_in])
 dropout_2 = Dropout(dropout)(graph_attention_1)
 graph_attention_2 = GraphAttention(n_classes,
@@ -87,7 +86,6 @@ graph_attention_2 = GraphAttention(n_classes,
                                    activation='softmax',
                                    kernel_regularizer=l2(l2_reg),
                                    attn_kernel_regularizer=l2(l2_reg),
-                                   name='secondGAT',
                                    )([dropout_2, A_in])
 
 # Build model
@@ -100,7 +98,7 @@ model.summary()
 
 # Train model
 unknowns = train_X.argmin(2)
-print('unknowns:\n', unknowns)
+print(f'about to train on {train_X.shape[0]} points ({X.shape[0]} total)')
 validation_data = ([val_X, val_A], val_y)
 history = model.fit([train_X, train_A],
           train_y,
@@ -167,3 +165,5 @@ plt.savefig(f'val_confusion_matrix_{args.name}.png')
 print('test:')
 plot_confusion_matrix(test_A, test_X, test_y)
 plt.savefig(f'test_confusion_matrix_{args.name}.png')
+
+print(f'trained on {train_X.shape[0]} points ({X.shape[0]} total)')
