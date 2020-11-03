@@ -32,10 +32,34 @@ def get_component_type_index(element):
 
 np.random.seed(1234)
 def load_netlist(textfile):
+    component_list, adj = netlist_as_graph(textfile)
+    element_types = np.array([ get_component_type_index(e) for e in component_list ])
+
+    X = np.zeros((len(component_list), len(component_list), len(component_types)))
+    A = np.zeros((X.shape[0], adj.shape[0], adj.shape[1]))  # TODO: should this be X.size?
+    y = np.copy(X)
+    encode_netlist((component_list, adj), A, X, y)
+    return A, X, y
+
+def encode_netlist(graph, A, X, y):
+    (component_list, adj) = graph
+    element_types = np.array([ get_component_type_index(e) for e in component_list ])
+
+    X[:,np.arange(element_types.size), element_types] = 1
+    y[:,np.arange(element_types.size), element_types] = 1
+    for idx in range(element_types.size):
+        actual_type = element_types[idx]
+        X[idx, idx, actual_type] = 0
+        X[idx, idx, 0] = 1
+        A[idx,:,:] = adj
+
+    return A, X
+
+
+def netlist_as_graph(textfile):
     parser = SpiceParser(source=textfile)
     circuit = parser.build_circuit()
     component_list = []
-
     adj = {}
 
     for element in circuit.elements:
@@ -60,24 +84,48 @@ def load_netlist(textfile):
             adj[node_id].append(element_id)
 
     adj = nx.adjacency_matrix(nx.from_dict_of_lists(adj)).toarray()
+    return component_list, adj
 
-    element_types = np.array([ get_component_type_index(e) for e in component_list ])
+# def load_netlists(textfiles):
+    # graphs = [ netlist_as_graph(textfile) for textfile in textfiles ]
+    # counts = [ len(components) for (components, _) in graphs ]
+    # max_components = max(counts)
+    # data_count = sum(counts)
+    # A = np.zeros((data_count, max_components, max_components))
+    # X = np.zeros((data_count, max_components, len(component_types)))
+    # y = np.zeros((data_count, max_components, len(component_types)))
 
-    X = np.zeros((element_types.size, element_types.size, len(component_types)))
-    X[:,np.arange(element_types.size), element_types] = 1
-    A = np.zeros((X.size, adj.shape[0], adj.shape[1]))
-    y = np.copy(X)
-    for idx in range(element_types.size):
-        actual_type = element_types[idx]
-        X[idx, idx, actual_type] = 0
-        X[idx, idx, 0] = 1
-        A[idx,:,:] = adj
+    # # TODO: populate the tensors with the correct values
+    # for (components, adj) in graphs:
+    # element_types = np.array([ get_component_type_index(e) for e in component_list ])
 
-    return A, X, y
+    # X = np.zeros((element_types.size, element_types.size, len(component_types)))
+    # X[:,np.arange(element_types.size), element_types] = 1
+    # A = np.zeros((X.size, adj.shape[0], adj.shape[1]))
+    # y = np.copy(X)
+    # for idx in range(element_types.size):
+        # actual_type = element_types[idx]
+        # X[idx, idx, actual_type] = 0
+        # X[idx, idx, 0] = 1
+        # A[idx,:,:] = adj
+
+    # return A, X, y
 
 # TODO: Load an entire dataset
+# TODO: get the max number of components
 
 if __name__ == '__main__':
     import sys
-    with open(sys.argv[1], 'rb') as f:
-        print(load_netlist(f.read().decode('utf-8', 'ignore')))
+    if len(sys.argv) > 1:
+        with open(sys.argv[1], 'rb') as f:
+            print(load_netlist(f.read().decode('utf-8', 'ignore')))
+    else:
+        import json
+        types = {}
+        for (i, ctype) in enumerate(component_types):
+            if type(ctype) is not str:
+                ctype = ctype.__name__
+            types[i] = ctype
+        print(json.dumps(types))
+
+    print(dict(enumerate(component_types)))
