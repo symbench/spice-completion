@@ -18,12 +18,12 @@ from tensorflow.keras.regularizers import l2
 from spektral.datasets import citation
 from spektral.layers import GraphAttention
 
-from parse_netlist import load_netlists
+from parse_netlist import load_netlists, is_valid_netlist
 import sys
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('file')  # FIXME: add varargs , nargs='+')
+parser.add_argument('files', nargs='+')
 parser.add_argument('--name', default='train')
 parser.add_argument('--epochs', default=100, type=int)
 args = parser.parse_args()
@@ -40,8 +40,9 @@ def sample(A, X, y, amt, indices=None):
     return split_A, split_X, split_y, indices
 
 # Load data
-with open(args.file, 'rb') as f:
-    A, X, y = load_netlists([f.read().decode('utf-8', 'ignore')])
+netlists = ( open(f, 'rb').read().decode('utf-8', 'ignore') for f in args.files )
+netlists = ( text for text in netlists if is_valid_netlist(text) )
+A, X, y = load_netlists(netlists)
 
 train_A, train_X, train_y, indices = sample(A, X, y, 0.8)
 val_A, val_X, val_y, indices = sample(A, X, y, 0.5, indices)

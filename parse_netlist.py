@@ -114,6 +114,16 @@ def netlist_as_graph(textfile):
     adj = nx.adjacency_matrix(nx.from_dict_of_lists(adj)).toarray()
     return component_list, adj
 
+def is_valid_netlist(textfile, name=None):
+    try:
+        parser = SpiceParser(source=textfile)
+        circuit = parser.build_circuit()
+        return True
+    except:
+        if name:
+            print(f'invalid spice file: {name}', file=sys.stderr)
+        return False
+
 # TODO: Load an entire dataset
 # TODO: get the max number of components
 
