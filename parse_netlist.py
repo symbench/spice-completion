@@ -18,6 +18,7 @@ subcircuit_types = {}
 with open('subcircuit-types.txt', 'r') as f:
     subcircuit_label_pairs = (line.split(' ') for line in f if len(line.split(' ')) == 2)
     for (subcircuit, label) in subcircuit_label_pairs:
+        label = label.strip()
         subcircuit_types[subcircuit] = label
         if label not in component_types:
             component_types.append(label)
