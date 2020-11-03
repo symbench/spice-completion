@@ -46,7 +46,7 @@ def load_netlist(textfile):
     component_list, adj = netlist_as_graph(textfile)
 
     X = np.zeros((len(component_list), len(component_list), len(component_types)))
-    A = np.zeros((X.shape[0], adj.shape[0], adj.shape[1]))  # TODO: should this be X.size?
+    A = np.zeros((X.shape[0], adj.shape[0], adj.shape[1]))
     y = np.copy(X)
     encode_netlist((component_list, adj), A, X, y)
     return A, X, y
@@ -79,7 +79,7 @@ def encode_netlist(graph, A, X, y):
         actual_type = element_types[idx]
         X[idx, idx, actual_type] = 0
         X[idx, idx, 0] = 1
-        A[idx,:,:] = adj
+        A[idx,:adj.shape[0],:adj.shape[1]] = adj
 
     return A, X
 
