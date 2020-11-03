@@ -5,6 +5,7 @@ from PySpice.Spice import BasicElement
 from PySpice.Spice.Netlist import Node
 
 component_types = [
+    'unknown',
     BasicElement.Resistor,
     BasicElement.BehavioralCapacitor,
     BasicElement.VoltageSource,
@@ -57,34 +58,21 @@ def load_netlist(textfile):
                 adj[node_id] = []
             adj[node_id].append(element_id)
 
-    adj = nx.adjacency_matrix(nx.from_dict_of_lists(adj))
+    adj = nx.adjacency_matrix(nx.from_dict_of_lists(adj)).toarray()
 
     element_types = np.array([ get_component_type_index(e) for e in component_list ])
-    X = np.zeros((element_types.size, len(component_types)))
-    X[np.arange(element_types.size), element_types] = 1
 
-    labels = X  # TODO: Not sure if this is what I want...
+    X = np.zeros((element_types.size, element_types.size, len(component_types)))
+    X[:,np.arange(element_types.size), element_types] = 1
+    A = np.zeros((X.size, adj.shape[0], adj.shape[1]))
+    y = np.copy(X)
+    for idx in range(element_types.size):
+        actual_type = element_types[idx]
+        X[idx, idx, actual_type] = 0
+        X[idx, idx, 0] = 1
+        A[idx,:,:] = adj
 
-    # For now, just mask out the first non-pin (second for validation)
-    # TODO: Make the mask more intentional
-    mask = np.ones(element_types.size)
-    mask_idx = np.random.choice(element_types.size, element_types.size//2, replace=False)
-    mask[mask_idx] = 0
-    train_mask = np.array(mask, dtype=np.bool)
-
-    mask = np.ones(element_types.size)
-    # FIXME: this could contain elements from the training set
-    mask_idx = np.random.choice(element_types.size, element_types.size//2, replace=False)
-    mask[mask_idx] = 0
-    val_mask = np.array(mask, dtype=np.bool)
-
-    mask = np.ones(element_types.size)
-    # FIXME: this could contain elements from the training, val set
-    mask_idx = np.random.choice(element_types.size, element_types.size//2, replace=False)
-    mask[mask_idx] = 0
-    test_mask = np.array(mask, dtype=np.bool)
-
-    return adj, X, labels, train_mask, val_mask, test_mask
+    return A, X, y
 
 # TODO: Load an entire dataset
 

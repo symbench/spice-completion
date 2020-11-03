@@ -1,3 +1,5 @@
+import numpy as np
+import math
 from spektral.layers import GraphAttention
 
 """
@@ -25,16 +27,31 @@ parser.add_argument('file')  # FIXME: add varargs , nargs='+')
 parser.add_argument('--name', default='train')
 args = parser.parse_args()
 
+def sample(A, X, y, amt, indices=None):
+    if indices is None:
+        indices = np.arange(X.shape[0])
+    split_size = math.floor(indices.size*amt)
+    split_idx = np.random.choice(indices, split_size, replace=False)
+    split_X = X[split_idx]
+    split_y = y[split_idx]
+    split_A = A[split_idx]
+    indices = np.setdiff1d(indices, split_idx)
+    return split_A, split_X, split_y, indices
+
 # Load data
 with open(args.file, 'rb') as f:
-    A, X, y, train_mask, val_mask, test_mask = load_netlist(f.read().decode('utf-8', 'ignore'))
+    A, X, y = load_netlist(f.read().decode('utf-8', 'ignore'))
+
+train_A, train_X, train_y, indices = sample(A, X, y, 0.8)
+val_A, val_X, val_y, indices = sample(A, X, y, 0.5, indices)
+test_A, test_X, test_y, indices = sample(A, X, y, 1.0, indices)
 
 # Parameters
 channels = 8            # Number of channel in each head of the first GAT layer
 n_attn_heads = 8        # Number of attention heads in first GAT layer
-N = X.shape[0]          # Number of nodes in the graph
-F = X.shape[1]          # Original size of node features
-n_classes = y.shape[1]  # Number of classes
+N = train_X.shape[0]          # Number of nodes in the graph
+F = train_X.shape[-1]          # Original size of node features
+n_classes = train_y.shape[-1]  # Number of classes
 dropout = 0.6           # Dropout rate for the features and adjacency matrix
 dropout = 0.  # FIXME: remove
 l2_reg = 5e-6           # L2 regularization rate
@@ -49,7 +66,7 @@ A = A.astype('f4')
 
 # Model definition
 X_in = Input(shape=(F, ))
-A_in = Input(shape=(N, ), sparse=True)
+A_in = Input(shape=(N, ))
 
 dropout_1 = Dropout(dropout)(X_in)
 graph_attention_1 = GraphAttention(channels,
@@ -58,7 +75,8 @@ graph_attention_1 = GraphAttention(channels,
                                    dropout_rate=dropout,
                                    activation='elu',
                                    kernel_regularizer=l2(l2_reg),
-                                   attn_kernel_regularizer=l2(l2_reg)
+                                   attn_kernel_regularizer=l2(l2_reg),
+                                   name='firstGAT',
                                    )([dropout_1, A_in])
 dropout_2 = Dropout(dropout)(graph_attention_1)
 graph_attention_2 = GraphAttention(n_classes,
@@ -67,7 +85,8 @@ graph_attention_2 = GraphAttention(n_classes,
                                    dropout_rate=dropout,
                                    activation='softmax',
                                    kernel_regularizer=l2(l2_reg),
-                                   attn_kernel_regularizer=l2(l2_reg)
+                                   attn_kernel_regularizer=l2(l2_reg),
+                                   name='secondGAT',
                                    )([dropout_2, A_in])
 
 # Build model
@@ -79,14 +98,19 @@ model.compile(optimizer=optimizer,
 model.summary()
 
 # Train model
-validation_data = ([X, A], y, val_mask)
-history = model.fit([X, A],
-          y,
-          sample_weight=train_mask,
+validation_data = ([val_X, val_A], val_y)
+# TODO: 
+print('N', N)
+print('F', F)
+print('n_classes', n_classes)
+history = model.fit([train_X, train_A],
+          train_y,
+          #sample_weight=train_mask,
           epochs=epochs,
-          batch_size=N,
-          validation_data=validation_data,
-          shuffle=False,  # Shuffling data means shuffling the whole graph
+          #batch_size=N,
+          validation_split=0.1,
+          #validation_data=validation_data,
+          shuffle=True,
           )
           #callbacks=[
               #EarlyStopping(patience=es_patience, restore_best_weights=True)
@@ -112,18 +136,21 @@ plt.savefig(f'model_loss_{args.name}.png')
 
 # Evaluate model
 print('Evaluating model.')
-eval_results = model.evaluate([X, A],
-                              y,
-                              sample_weight=test_mask,
-                              batch_size=N)
+print('test_X', test_X.shape)
+print('test_A', test_A.shape)
+print('test_y', test_y.shape)
+eval_results = model.evaluate([test_X, test_A], test_y)
+                              #test_y)
+                              #sample_weight=test_mask,
 
 print('Done.\n'
       'Test loss: {}\n'
       'Test accuracy: {}'.format(*eval_results))
 
-y_pred = model.predict([X, A])
-print('actual:\n', y.argmax(1))
-print('predicted:\n', y_pred.argmax(1))
-print('train mask:\n', train_mask.astype(int))
-print('test mask:\n', test_mask.astype(int))
+y_pred = model.predict([train_X, train_A])
+print('y_pred shape', y_pred.shape)
+print('predicted shape', y_pred.argmax(2).shape)
+print('actual:\n', train_y.argmax(2))
+print('predicted:\n', y_pred.argmax(2))
+print('unknowns:\n', train_X.argmin(2))
 # TODO: Generate confusion matrix?
