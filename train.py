@@ -25,6 +25,7 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('file')  # FIXME: add varargs , nargs='+')
 parser.add_argument('--name', default='train')
+parser.add_argument('--epochs', default=100, type=int)
 args = parser.parse_args()
 
 def sample(A, X, y, amt, indices=None):
@@ -56,8 +57,7 @@ dropout = 0.6           # Dropout rate for the features and adjacency matrix
 dropout = 0.  # FIXME: remove
 l2_reg = 5e-6           # L2 regularization rate
 learning_rate = 5e-3    # Learning rate
-epochs = 20000          # Number of training epochs
-epochs = 150  # FIXME: remove
+epochs = args.epochs
 es_patience = 100       # Patience for early stopping
 
 # Preprocessing operations
