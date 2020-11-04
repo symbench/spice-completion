@@ -105,13 +105,9 @@ history = model.fit([train_X, train_A],
           sample_weight=unknowns,
           epochs=epochs,
           #batch_size=N,
-          validation_split=0.1,
-          #validation_data=validation_data,
+          validation_data=validation_data,
           shuffle=True,
           )
-          #callbacks=[
-              #EarlyStopping(patience=es_patience, restore_best_weights=True)
-          #])
 
 from matplotlib import pyplot as plt
 plt.plot(history.history['acc'])
@@ -130,16 +126,6 @@ plt.xlabel('epoch')
 plt.ylabel('loss')
 plt.legend(['train', 'val'])
 plt.savefig(f'model_loss_{args.name}.png')
-
-# Evaluate model
-print('Evaluating model.')
-eval_results = model.evaluate([test_X, test_A], test_y)
-                              #test_y)
-                              #sample_weight=test_mask,
-
-print('Done.\n'
-      'Test loss: {}\n'
-      'Test accuracy: {}'.format(*eval_results))
 
 import scikitplot as skplt
 def plot_confusion_matrix(A, X, y):
@@ -167,3 +153,12 @@ plot_confusion_matrix(test_A, test_X, test_y)
 plt.savefig(f'test_confusion_matrix_{args.name}.png')
 
 print(f'trained on {train_X.shape[0]} points ({X.shape[0]} total)')
+
+# Evaluate model
+print('Evaluating model.')
+eval_results = model.evaluate([test_X, test_A], test_y)
+
+print('Done.\n'
+      'Test loss: {}\n'
+      'Test accuracy: {}'.format(*eval_results))
+
