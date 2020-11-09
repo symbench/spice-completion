@@ -3,6 +3,7 @@ import networkx as nx
 from PySpice.Spice.Parser import SpiceParser
 from PySpice.Spice import BasicElement
 from PySpice.Spice.Netlist import Node
+np.random.seed(1235)
 
 component_types = [
     'unknown',
@@ -41,7 +42,6 @@ def get_component_type_index(element):
 
     return component_types.index(element_type)
 
-np.random.seed(1234)
 def load_netlist(textfile):
     component_list, adj = netlist_as_graph(textfile)
 
