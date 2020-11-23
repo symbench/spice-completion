@@ -15,7 +15,7 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.regularizers import l2
 
-from parse_netlist import load_omitted_netlists, is_valid_netlist
+import datasets
 import sys
 import argparse
 
@@ -37,9 +37,7 @@ def sample(A, X, y, amt, indices=None):
     return split_A, split_X, split_y, indices
 
 # Load data
-netlists = ( open(f, 'rb').read().decode('utf-8', 'ignore') for f in args.files )
-netlists = ( text for text in netlists if is_valid_netlist(text) )
-A, X, y = load_omitted_netlists(netlists)
+A, X, y = datasets.omitted(args.files)
 
 train_A, train_X, train_y, indices = sample(A, X, y, 0.8)
 val_A, val_X, val_y, indices = sample(A, X, y, 0.5, indices)

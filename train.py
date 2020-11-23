@@ -18,7 +18,7 @@ from tensorflow.keras.regularizers import l2
 from spektral.datasets import citation
 from spektral.layers import GraphAttention
 
-from parse_netlist import load_masked_netlists, is_valid_netlist
+import datasets
 import sys
 import argparse
 
@@ -40,9 +40,7 @@ def sample(A, X, y, amt, indices=None):
     return split_A, split_X, split_y, indices
 
 # Load data
-netlists = ( open(f, 'rb').read().decode('utf-8', 'ignore') for f in args.files )
-netlists = ( text for text in netlists if is_valid_netlist(text) )
-A, X, y = load_masked_netlists(netlists)
+A, X, y = datasets.masked(args.files)
 
 train_A, train_X, train_y, indices = sample(A, X, y, 0.8)
 val_A, val_X, val_y, indices = sample(A, X, y, 0.5, indices)

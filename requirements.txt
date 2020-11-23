@@ -3,3 +3,4 @@ pyspice
 networkx
 numpy
 scipy
+scikit-plot
