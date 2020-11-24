@@ -89,3 +89,8 @@ def is_valid_netlist(textfile, name=None):
             print(f'invalid spice file: {name}', file=sys.stderr)
         return False
 
+def component_index_name(idx):
+    component = component_types[idx]
+    if type(component) is not str:
+        return component.__name__
+    return component
