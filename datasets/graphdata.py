@@ -4,7 +4,7 @@ This encodes a set of netlists for use with gSpan. The format is described in mo
 detail (with examples) at https://github.com/betterenvi/gSpan/tree/master/graphdata
 """
 
-def load(files):
+def load(files, use_names=False):
     sources = h.valid_netlist_sources(files)
     graphs = ( h.netlist_as_graph(source) for source in sources )
     lines = []
@@ -12,7 +12,7 @@ def load(files):
         lines.append(f't # {i}')
         vertices = []
         for (i, n) in enumerate(nodes):
-            label = h.get_component_type_index(n)
+            label = n.name if use_names else h.get_component_type_index(n)
             lines.append(f'v {i} {label}')
             neighbor_idx = ( j for (j, c) in list(enumerate(adj[i]))[i:] if c == 1 )
             for n_idx in neighbor_idx:
