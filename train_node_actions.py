@@ -26,7 +26,7 @@ import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument('files', nargs='+')
-parser.add_argument('--name', default='train-actions')
+parser.add_argument('--name', default='train_actions')
 parser.add_argument('--epochs', default=100, type=int)
 parser.add_argument('--batch_size', default=32, type=int)
 args = parser.parse_args()
@@ -133,6 +133,8 @@ current_batch = epoch = model_loss = model_acc = 0
 best_val_loss = np.inf
 best_weights = None
 patience = es_patience
+losses = []
+accuracies = []
 
 for batch in loader_tr:
     target = batch[1]
@@ -142,6 +144,8 @@ for batch in loader_tr:
     model_loss += loss
     model_acc += acc
     current_batch += 1
+    losses.append(loss)
+    accuracies.append(acc)
     if current_batch == loader_tr.steps_per_epoch:
         model_loss /= loader_tr.steps_per_epoch
         model_acc /= loader_tr.steps_per_epoch
@@ -169,37 +173,24 @@ for batch in loader_tr:
         current_batch = 0
 
 
-# TODO: Get the masks to use...
-# unknowns = train_X.argmin(2)
-# print(f'about to train on {train_X.shape[0]} points ({X.shape[0]} total)')
-# validation_data = ([val_X, val_A], val_y)
-# history = model.fit([train_X, train_A],
-          # train_y,
-          # sample_weight=unknowns,
-          # epochs=epochs,
-          # #batch_size=N,
-          # validation_data=validation_data,
-          # shuffle=True,
-          # )
-
 # Print summarization figures, stats
-# from matplotlib import pyplot as plt
-# plt.plot(history.history['acc'])
-# plt.plot(history.history['val_acc'])
-# plt.title('model accuracy')
-# plt.xlabel('epoch')
-# plt.ylabel('accuracy')
-# plt.legend(['train', 'val'])
-# plt.savefig(f'model_accuracy_{args.name}.png')
+from matplotlib import pyplot as plt
+plt.plot(accuracies)
+#plt.plot(history.history['val_acc'])
+plt.title('model accuracy')
+plt.xlabel('epoch')
+plt.ylabel('accuracy')
+plt.legend(['train', 'val'])
+plt.savefig(f'model_accuracy_{args.name}.png')
 
-# plt.clf()
-# plt.plot(history.history['loss'])
-# plt.plot(history.history['val_loss'])
-# plt.title('model loss')
-# plt.xlabel('epoch')
-# plt.ylabel('loss')
-# plt.legend(['train', 'val'])
-# plt.savefig(f'model_loss_{args.name}.png')
+plt.clf()
+plt.plot(losses)
+#plt.plot(history.history['val_loss'])
+plt.title('model loss')
+plt.xlabel('epoch')
+plt.ylabel('loss')
+plt.legend(['train', 'val'])
+plt.savefig(f'model_loss_{args.name}.png')
 
 # import scikitplot as skplt
 # def plot_confusion_matrix(A, X, y):
