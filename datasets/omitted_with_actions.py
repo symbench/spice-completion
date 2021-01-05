@@ -10,7 +10,7 @@ import scipy.sparse as sp
 all_component_types = h.component_types
 embedding_size = len(all_component_types) + 1
 action_index = len(all_component_types)
-#np.set_printoptions(threshold=100000)
+np.set_printoptions(threshold=100000)
 
 class OmittedWithActionsDataset(Dataset):
     def __init__(self, filenames, **kwargs):
