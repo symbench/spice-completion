@@ -51,13 +51,20 @@ class OmittedWithActionsDataset(Dataset):
         # add connectivity to the action nodes (unidirectional)
         expanded_adj[:component_count,action_indices] = 1
         expanded_adj[omitted_idx, :] = 0
-        a = sp.csr_matrix(expanded_adj)
 
         # labels... -1 for nodes to mask
         y = np.zeros((total_components,))
         y[np.arange(component_types.size)] = -1
         y[omitted_idx] = 1
 
+        # shuffle
+        indices = np.arange(x.shape[0])
+        np.random.shuffle(indices)
+        x = np.take(x, indices, axis=0)
+        y = np.take(y, indices, axis=0)
+        expanded_adj = np.take(expanded_adj, indices, axis=0)
+
+        a = sp.csr_matrix(expanded_adj)
         return Graph(x=x, a=a, y=y)
 
     def load_graphs(self, filename):
