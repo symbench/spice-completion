@@ -25,6 +25,9 @@ component_types = [
     BasicElement.BipolarJunctionTransistor,
     BasicElement.XSpiceElement,
     BasicElement.BehavioralSource,
+    BasicElement.SemiconductorResistor,
+    BasicElement.Mesfet,
+    BasicElement.Inductor,
 ]
 
 subcircuit_types = {}
