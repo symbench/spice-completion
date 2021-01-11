@@ -86,7 +86,7 @@ def is_valid_netlist(textfile, name=None):
     try:
         parser = SpiceParser(source=textfile)
         circuit = parser.build_circuit()
-        return True
+        return len(circuit.elements) > 0
     except:
         if name:
             print(f'invalid spice file: {name}', file=sys.stderr)
