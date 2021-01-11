@@ -6,3 +6,4 @@ networkx
 numpy
 scipy
 scikit-plot
+seaborn==0.11.1

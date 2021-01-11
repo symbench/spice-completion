@@ -162,7 +162,7 @@ for batch in loader_tr:
         model_acc = 0
         current_batch = 0
 
-# TODO: generate confusion matrix
+print('-------- Evaluating --------')
 def select_prototype_types(prototype_types, actions):
     node_count = actions.shape[1]
     pred_idx = np.array([idx + i*node_count for (i, idx) in enumerate(np.argmax(actions, axis=1))])
@@ -192,6 +192,17 @@ label_dist = dict(zip(unique, counts))
 print('label distribution:')
 for (key, value) in label_dist.items():
     print(f'{key}: {value}')
+
+# confusion matrix
+import pandas as pd
+import seaborn as sn
+from matplotlib import pyplot as plt
+data = {'actual': all_actual_types, 'predicted': all_pred_types}
+df = pd.DataFrame(data, columns=['actual', 'predicted'])
+cm = pd.crosstab(df['actual'], df['predicted'], rownames=['Actual'], colnames=['Predicted'], margins=True)
+sn.heatmap(cm, annot=True)
+plt.show()
+plt.savefig(f'confusion_matrix_{args.name}.png')
 
 # Print summarization figures, stats
 from matplotlib import pyplot as plt
