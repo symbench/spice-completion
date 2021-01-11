@@ -37,6 +37,7 @@ class OmittedWithActionsDataset(Dataset):
             counts.sort()
             middle_idx = len(counts)//2
             median_count = counts[middle_idx]
+            #median_count = min(counts)
             print(f'Resampling classes to median size ({median_count})')
 
             graph_idx = []
