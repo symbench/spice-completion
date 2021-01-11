@@ -23,6 +23,7 @@ from spektral.layers import GATConv
 import datasets
 import sys
 import argparse
+from model import model
 
 parser = argparse.ArgumentParser()
 parser.add_argument('files', nargs='+')
@@ -57,35 +58,13 @@ F = dataset.n_node_features
 dropout = 0.6           # Dropout rate for the features and adjacency matrix
 dropout = 0.  # FIXME: remove
 l2_reg = 5e-6           # L2 regularization rate
-learning_rate = 5e-3    # Learning rate
+learning_rate = 5e-4    # Learning rate
 epochs = args.epochs
 es_patience = 100       # Patience for early stopping
 
 # Model definition
-X_in = Input(shape=(F, ))
-A_in = Input(shape=(None,), sparse=True)
+print('F', F)
 
-dropout_1 = Dropout(dropout)(X_in)
-graph_attention_1 = GATConv(channels,
-                                   attn_heads=n_attn_heads,
-                                   concat_heads=True,
-                                   dropout_rate=dropout,
-                                   activation='elu',
-                                   kernel_regularizer=l2(l2_reg),
-                                   attn_kernel_regularizer=l2(l2_reg),
-                                   )([dropout_1, A_in])
-dropout_2 = Dropout(dropout)(graph_attention_1)
-graph_attention_2 = GATConv(1,
-                                   attn_heads=1,
-                                   concat_heads=False,
-                                   dropout_rate=dropout,
-                                   activation='elu',
-                                   kernel_regularizer=l2(l2_reg),
-                                   attn_kernel_regularizer=l2(l2_reg),
-                                   )([dropout_2, A_in])
-
-# Build model
-model = Model(inputs=[X_in, A_in], outputs=graph_attention_2)
 loss_fn = CategoricalCrossentropy()
 opt = Adam(lr=learning_rate)
 #model.compile(optimizer=optimizer,

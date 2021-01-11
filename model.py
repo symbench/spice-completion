@@ -1,35 +1,35 @@
-
-from spektral.layers import GraphAttention
-
-"""
-This example implements the experiments on citation networks from the paper:
-
-Graph Attention Networks (https://arxiv.org/abs/1710.10903)
-Petar Veličković, Guillem Cucurull, Arantxa Casanova, Adriana Romero, Pietro Liò, Yoshua Bengio
-"""
-
-from tensorflow.keras.callbacks import EarlyStopping
-from tensorflow.keras.layers import Input, Dropout
+import tensorflow.keras as keras
 from tensorflow.keras.models import Model
-from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.regularizers import l2
+from spektral.layers import *
+from tensorflow.keras.layers import *
 
-from spektral.datasets import citation
-from spektral.layers import GraphAttention
+def custom_elu_alpha_12(x):
+    return keras.activations.elu(x, alpha=1)
+def custom_elu_alpha_1(x):
+    return keras.activations.elu(x, alpha=1)
 
-# Load data
-dataset = 'cora'
-A, X, y, train_mask, val_mask, test_mask = citation.load_data(dataset)
+nodes_output = Input(shape=(59, ), batch_size=None, dtype=None, sparse=False, tensor=None, ragged=False)
+adjacency_output = Input(shape=(None, ), sparse=True)
+graphattention = GATConv(channels=59, attn_heads=1, concat_heads=True, dropout_rate=0., return_attn_coef=False, use_bias=True, kernel_initializer=keras.initializers.GlorotUniform(seed=None), bias_initializer=keras.initializers.Zeros(), attn_kernel_initializer=keras.initializers.GlorotUniform(seed=None))
 
-print('A:')
-print(A.shape)
-print('X:')
-print(type(X))
-print(X.shape)
-print('y:')
-print(y.shape)
-print('train_mask:')
-print(train_mask.shape)
-print('True values in train mask:', len([ i for i in list(train_mask) if i ]))
-print('True values in val mask:', len([ i for i in list(val_mask) if i ]))
-print('True values in test mask:', len([ i for i in list(test_mask) if i ]))
+graphattention_output = graphattention(inputs=[nodes_output, adjacency_output])
+
+sharedweightlayer_output = graphattention(inputs=[graphattention_output, adjacency_output])
+sharedweightlayer_output = graphattention(inputs=[sharedweightlayer_output, adjacency_output])
+sharedweightlayer_output = graphattention(inputs=[sharedweightlayer_output, adjacency_output])
+
+graphattention2 = GATConv(channels=1, attn_heads=1, concat_heads=True, dropout_rate=0., return_attn_coef=False, activation=custom_elu_alpha_1, use_bias=True, kernel_initializer=keras.initializers.GlorotUniform(seed=None), bias_initializer=keras.initializers.Zeros(), attn_kernel_initializer=keras.initializers.GlorotUniform(seed=None))
+graphattention_output2 = graphattention2(inputs=[sharedweightlayer_output, adjacency_output])
+flatten = Flatten(data_format=None)
+flatten_output = flatten(inputs=graphattention_output2)
+activation = Activation(activation=custom_elu_alpha_12)
+activation_output = activation(inputs=flatten_output)
+
+custom_objects = {}
+custom_objects['custom_elu_alpha_1'] = custom_elu_alpha_1
+custom_objects['custom_elu_alpha_12'] = custom_elu_alpha_12
+
+
+model = Model(inputs=[nodes_output,adjacency_output], outputs=[activation_output])
+result = model
+model.custom_objects = custom_objects
