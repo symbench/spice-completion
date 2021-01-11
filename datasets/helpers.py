@@ -28,6 +28,13 @@ component_types = [
     BasicElement.SemiconductorResistor,
     BasicElement.Mesfet,
     BasicElement.Inductor,
+    BasicElement.CurrentControlledVoltageSource,
+    BasicElement.UniformDistributedRCLine,
+    BasicElement.CoupledMulticonductorLine,
+    BasicElement.SingleLossyTransmissionLine,
+    BasicElement.BehavioralResistor,
+    BasicElement.LossyTransmission,
+    BasicElement.CurrentControlledCurrentSource,
 ]
 
 subcircuit_types = {}
