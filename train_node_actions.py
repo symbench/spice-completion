@@ -181,8 +181,6 @@ for batch in loader_tr:
 
     pred_types = select_prototype_types(prototype_types, actions)
     actual_types = select_prototype_types(prototype_types, targets)
-    print('pred_types', pred_types)
-    print('actual_types', actual_types)
 
     all_pred_types.extend(pred_types)
     all_actual_types.extend(actual_types)
@@ -199,10 +197,20 @@ import seaborn as sn
 from matplotlib import pyplot as plt
 data = {'actual': all_actual_types, 'predicted': all_pred_types}
 df = pd.DataFrame(data, columns=['actual', 'predicted'])
-cm = pd.crosstab(df['actual'], df['predicted'], rownames=['Actual'], colnames=['Predicted'], margins=True)
+cm = pd.crosstab(df['actual'], df['predicted'], rownames=['Actual'], colnames=['Predicted'])
+for idx in all_actual_types:
+    if idx not in all_pred_types:
+        cm[idx] = 0
+
+totals = [ sum(row) for (_, row) in cm.iterrows() ]
+cm['Totals'] = totals
+sorted_cols = sorted([ c for c in cm.columns if type(c) is int ])
+sorted_cols.append('Totals')
+cm = cm.reindex(sorted_cols, axis=1)
+
 sn.heatmap(cm, annot=True)
-plt.show()
 plt.savefig(f'confusion_matrix_{args.name}.png')
+plt.show()
 
 # Print summarization figures, stats
 from matplotlib import pyplot as plt
