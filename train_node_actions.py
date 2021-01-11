@@ -166,23 +166,28 @@ def select_prototype_types(prototype_types, actions):
     return pred_types
 
 loader_tr = DisjointLoader(dataset_tr, batch_size=batch_size, epochs=1)
+all_pred_types = []
+all_actual_types = []
 for batch in loader_tr:
     nodes, adj, edges = batch[0]
     actions, targets, mask = forward(*batch)
     node_types = np.argmax(nodes, axis=1)
     flat_mask = tf.reshape(mask, (-1,))
-    # TODO: flatten the mask and use it to select the node types of interest
-    # TODO: convert them to class labels
     prototype_types = tf.boolean_mask(node_types, flat_mask)
+
     pred_types = select_prototype_types(prototype_types, actions)
     actual_types = select_prototype_types(prototype_types, targets)
     print('pred_types', pred_types)
     print('actual_types', actual_types)
-    unique, counts = np.unique(actual_types, return_counts=True)
-    label_dist = dict(zip(unique, counts))
-    print('label distribution:')
-    for (key, value) in label_dist.items():
-        print(f'{key}: {value}')
+
+    all_pred_types.extend(pred_types)
+    all_actual_types.extend(actual_types)
+
+unique, counts = np.unique(all_actual_types, return_counts=True)
+label_dist = dict(zip(unique, counts))
+print('label distribution:')
+for (key, value) in label_dist.items():
+    print(f'{key}: {value}')
 
 # Print summarization figures, stats
 from matplotlib import pyplot as plt
