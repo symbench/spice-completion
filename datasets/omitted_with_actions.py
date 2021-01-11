@@ -3,9 +3,11 @@
     "Action nodes" have been added for the possible actions to take.
 """
 import numpy as np
+import random
 from . import helpers as h
 from spektral.data import Dataset, Graph
 import scipy.sparse as sp
+import itertools
 
 all_component_types = h.component_types
 embedding_size = len(all_component_types) + 1
@@ -13,15 +15,46 @@ action_index = len(all_component_types)
 np.set_printoptions(threshold=100000)
 
 class OmittedWithActionsDataset(Dataset):
-    def __init__(self, filenames, **kwargs):
+    def __init__(self, filenames, resample=True, **kwargs):
         self.filenames = h.valid_netlist_sources(filenames)
+        self.resample = resample
         super().__init__(**kwargs)
 
     def read(self):
         graphs = []
         for filename in self.filenames:
             graphs.extend(self.load_graphs(filename))
+
+        if self.resample:
+            graphs_by_label = {}
+            for (i, graph) in enumerate(graphs):
+                label = self.graph_label_type(graph)
+                if label not in graphs_by_label:
+                    graphs_by_label[label] = []
+                graphs_by_label[label].append(i)
+
+            counts = [ len(vals) for vals in graphs_by_label.values() ]
+            counts.sort()
+            middle_idx = len(counts)//2
+            median_count = counts[middle_idx]
+
+            graph_idx = []
+            for label_idx in graphs_by_label.values():
+                if len(label_idx) > median_count:
+                    idx = random.sample(label_idx, median_count)
+                else:
+                    idx = label_idx
+
+                graph_idx.extend(idx)
+
+            graphs = [ graphs[i] for i in graph_idx ]
+
         return graphs
+
+    def graph_label_type(self, graph):
+        label_idx = np.argmax(graph.y)
+        class_idx = np.argmax(graph.x[label_idx])
+        return class_idx
 
     def load_graph(self, components, adj, omitted_idx):
         component_count = len(components)
