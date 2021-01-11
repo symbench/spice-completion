@@ -93,24 +93,30 @@ opt = Adam(lr=learning_rate)
 acc_fn = CategoricalAccuracy()
 model.summary()
 
+def forward(inputs, target):
+    nodes, adj, edges = inputs
+    output = model((nodes, adj), training=True)
+    #print('3. target.shape', target.shape)
+    output = tf.reshape(output, (-1, target.shape[1]))
+    mask = tf.math.not_equal(target, -1)
+    logits = tf.ragged.boolean_mask(output, mask)
+    sums = tf.expand_dims(tf.reduce_sum(tf.math.exp(logits), 1), axis=1)
+    action_probs = tf.divide(tf.math.exp(logits).to_tensor(), sums)
+    target = tf.boolean_mask(target, mask)
+    target = tf.reshape(target, action_probs.shape)
+    return action_probs, target, mask
+
 # Train model
 #@tf.function(input_signature=loader_tr.tf_signature(), experimental_relax_shapes=True)
 def train_step(inputs, target):
+    #print('2. target.shape', target.shape)
     with tf.GradientTape() as tape:
-        nodes, adj, edges = inputs
-        output = model((nodes, adj), training=True)
-        output = tf.reshape(output, (-1, target.shape[1]))
-        mask = tf.math.not_equal(target, -1)
-        logits = tf.ragged.boolean_mask(output, mask)
-        sums = tf.expand_dims(tf.reduce_sum(tf.math.exp(logits), 1), axis=1)
-        action_probs = tf.divide(tf.math.exp(logits).to_tensor(), sums)
-        target = tf.boolean_mask(target, mask)
-        target = tf.reshape(target, action_probs.shape)
+        action_probs, target, _ = forward(inputs, target)
 
         loss = loss_fn(target, action_probs)
         loss += sum(model.losses)
         acc = acc_fn(target, action_probs)
-        #acc_fn.reset_states()
+        acc_fn.reset_states()
     gradients = tape.gradient(loss, model.trainable_variables)
     opt.apply_gradients(zip(gradients, model.trainable_variables))
     return action_probs, target, loss, acc
@@ -139,6 +145,7 @@ accuracies = []
 for batch in loader_tr:
     target = batch[1]
     batch_size = target.shape[0]
+    #print('1. target:', target.shape)
     preds, targets, loss, acc = train_step(*batch)
 
     model_loss += loss
@@ -172,6 +179,31 @@ for batch in loader_tr:
         model_acc = 0
         current_batch = 0
 
+# TODO: generate confusion matrix
+def select_prototype_types(prototype_types, actions):
+    node_count = actions.shape[1]
+    pred_idx = np.array([idx + i*node_count for (i, idx) in enumerate(np.argmax(actions, axis=1))])
+    pred_types = np.take(prototype_types, pred_idx)
+    return pred_types
+
+loader_tr = DisjointLoader(dataset_tr, batch_size=batch_size, epochs=1)
+for batch in loader_tr:
+    nodes, adj, edges = batch[0]
+    actions, targets, mask = forward(*batch)
+    node_types = np.argmax(nodes, axis=1)
+    flat_mask = tf.reshape(mask, (-1,))
+    # TODO: flatten the mask and use it to select the node types of interest
+    # TODO: convert them to class labels
+    prototype_types = tf.boolean_mask(node_types, flat_mask)
+    pred_types = select_prototype_types(prototype_types, actions)
+    actual_types = select_prototype_types(prototype_types, targets)
+    print('pred_types', pred_types)
+    print('actual_types', actual_types)
+    unique, counts = np.unique(actual_types, return_counts=True)
+    label_dist = dict(zip(unique, counts))
+    print('label distribution:')
+    for (key, value) in label_dist.items():
+        print(f'{key}: {value}')
 
 # Print summarization figures, stats
 from matplotlib import pyplot as plt
