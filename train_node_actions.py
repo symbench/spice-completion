@@ -75,20 +75,25 @@ model.summary()
 def forward(inputs, target):
     nodes, adj, edges = inputs
     output = model((nodes, adj), training=True)
-    #print('3. target.shape', target.shape)
-    output = tf.reshape(output, (-1, target.shape[1]))
-    mask = tf.math.not_equal(target, -1)
+    lens = [ len(graph_y) for graph_y in target ]
+
+    output = tf.squeeze(output, axis=1)
+    output = tf.RaggedTensor.from_row_lengths(output, lens)
+    flat_targets = np.hstack(target)
+    target_rt = tf.RaggedTensor.from_row_lengths(flat_targets, lens)
+    mask = tf.math.not_equal(target_rt, -1)
     logits = tf.ragged.boolean_mask(output, mask)
+
     sums = tf.expand_dims(tf.reduce_sum(tf.math.exp(logits), 1), axis=1)
     action_probs = tf.divide(tf.math.exp(logits).to_tensor(), sums)
-    target = tf.boolean_mask(target, mask)
-    target = tf.reshape(target, action_probs.shape)
+    target = tf.ragged.boolean_mask(target_rt, mask)
+    target = tf.reshape(target.to_tensor(), action_probs.shape)
+
     return action_probs, target, mask
 
 # Train model
 #@tf.function(input_signature=loader_tr.tf_signature(), experimental_relax_shapes=True)
 def train_step(inputs, target):
-    #print('2. target.shape', target.shape)
     with tf.GradientTape() as tape:
         action_probs, target, _ = forward(inputs, target)
 
@@ -124,7 +129,6 @@ accuracies = []
 for batch in loader_tr:
     target = batch[1]
     batch_size = target.shape[0]
-    #print('1. target:', target.shape)
     preds, targets, loss, acc = train_step(*batch)
 
     model_loss += loss
@@ -172,7 +176,7 @@ for batch in loader_tr:
     nodes, adj, edges = batch[0]
     actions, targets, mask = forward(*batch)
     node_types = np.argmax(nodes, axis=1)
-    flat_mask = tf.reshape(mask, (-1,))
+    flat_mask = np.hstack(mask)
     prototype_types = tf.boolean_mask(node_types, flat_mask)
 
     pred_types = select_prototype_types(prototype_types, actions)
