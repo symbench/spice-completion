@@ -78,9 +78,9 @@ opt = Adam(lr=learning_rate)
 acc_fn = CategoricalAccuracy()
 model.summary()
 
-def forward(inputs, target):
+def forward(inputs, target, training=True):
     nodes, adj, edges = inputs
-    output = model((nodes, adj), training=True)
+    output = model((nodes, adj), training=training)
     lens = [ len(graph_y) for graph_y in target ]
 
     output = tf.squeeze(output, axis=1)
@@ -111,10 +111,29 @@ def log_gradients(gradients):
     if learning_layers_idx is None:
         learning_layers_idx = [ i for (i, g) in enumerate(gradients) if np.linalg.norm(g) != 0 ]
 
-    nonzero_grads = [ gradients[i] for i in learning_layers_idx ]
+    nonzero_grads = []
+    for i in learning_layers_idx:
+        nonzero_grads.append(gradients[i])
+        tf.summary.scalar(f'gradient norm {i}', data=np.linalg.norm(gradients[i]), step=iteration)
+
     grad_norm = sum((np.linalg.norm(g) for g in nonzero_grads)) / len(nonzero_grads)
     tf.summary.scalar('mean gradient norm', data=grad_norm, step=iteration)
 
+def distribution_as_histogram(distribution, precision=0.01):
+    dist_as_histogram = []
+    for (i, prob) in enumerate(distribution):
+        count = prob.numpy()/precision + 1
+        for _ in range(int(count)):
+            dist_as_histogram.append(i)
+    return np.array(dist_as_histogram)
+
+def log_sample_prediction(epoch, prediction, target):
+    prediction_dist = distribution_as_histogram(prediction)
+    tf.summary.histogram('Sample Prediction', prediction_dist, step=epoch, buckets=len(prediction))
+
+    target_dist = distribution_as_histogram(target)
+    print('target:', np.argmax(target))
+    tf.summary.histogram('Sample Target', target_dist, step=epoch, buckets=len(target))
 
 # Train model
 #@tf.function(input_signature=loader_tr.tf_signature(), experimental_relax_shapes=True)
@@ -143,6 +162,7 @@ def evaluate(loader, ops_list):
         output.append(outs)
     return np.mean(output, 0)
 
+sample = None
 for batch in loader_tr:
     target = batch[1]
     batch_size = target.shape[0]
@@ -169,6 +189,11 @@ for batch in loader_tr:
               #.format(epoch, model_loss, model_acc, val_loss, val_acc))
 
         # Check if loss improved for early stopping
+        if loss < best_val_loss:
+            best_val_loss = loss
+            print('New best loss {:.3f}'.format(loss))
+            best_weights = model.get_weights()
+
         #if val_loss < best_val_loss:
             #best_val_loss = val_loss
             #patience = es_patience
@@ -179,6 +204,11 @@ for batch in loader_tr:
             #if patience == 0:
                 #print('Early stopping (best val_loss: {})'.format(best_val_loss))
                 #break
+        if sample is None:
+            sample = batch
+        action_probs, targets, _ = forward(*sample, training=False)
+        log_sample_prediction(epoch, preds[0], targets[0])
+
         model_loss = 0
         model_acc = 0
         current_batch = 0
@@ -195,7 +225,7 @@ all_pred_types = []
 all_actual_types = []
 for batch in loader_tr:
     nodes, adj, edges = batch[0]
-    actions, targets, mask = forward(*batch)
+    actions, targets, mask = forward(*batch, training=False)
     node_types = np.argmax(nodes, axis=1)
     flat_mask = np.hstack(mask)
     prototype_types = tf.boolean_mask(node_types, flat_mask)
