@@ -144,7 +144,7 @@ def distribution_as_histogram(distribution, precision=0.01):
     return np.array(dist_as_histogram)
 
 def log_sample_prediction(epoch, prediction, target):
-    print(prediction, np.argmax(prediction), '(', np.argmax(target), ')')
+    #print(prediction, np.argmax(prediction), '(', np.argmax(target), ')')
     try:
         prediction_dist = distribution_as_histogram(prediction)
         tf.summary.histogram(f'Sample Prediction ({np.argmax(target)})', prediction_dist, step=epoch, buckets=len(prediction))
@@ -156,6 +156,7 @@ def log_sample_prediction(epoch, prediction, target):
     target_dist = distribution_as_histogram(target)
     tf.summary.histogram('Sample Target', target_dist, step=epoch, buckets=len(target))
 
+DEBUG = {}
 # Train model
 #@tf.function(input_signature=loader_tr.tf_signature(), experimental_relax_shapes=True)
 def train_step(inputs, target):
@@ -168,8 +169,21 @@ def train_step(inputs, target):
         acc_fn.reset_states()
     gradients = tape.gradient(loss, model.trainable_variables)
     log_gradients(gradients)
+    for grad in gradients:
+        has_nan = tf.math.count_nonzero(tf.math.is_nan(grad))
+        if has_nan:
+            global DEBUG
+            DEBUG['gradients'] = gradients
+            DEBUG['action_probs'] = action_probs
+            DEBUG['target'] = target
+            DEBUG['inputs'] = inputs
+            DEBUG['loss'] = loss
+            DEBUG['acc'] = acc
+            print('gradient has a nan!')
+            exit()
     # TODO: clip gradients?
     opt.apply_gradients(zip(gradients, model.trainable_variables))
+
     return action_probs, target, loss, acc
 
 def evaluate(loader, ops_list):
@@ -228,7 +242,10 @@ for batch in loader_tr:
         if sample is None:
             sample = batch
         action_probs, targets, _ = forward(*sample, training=False)
-        log_sample_prediction(epoch, preds[0], targets[0])
+        try:
+            log_sample_prediction(epoch, preds[0], targets[0])
+        except Exception as e:
+            raise e
 
         model_loss = 0
         model_acc = 0
@@ -270,6 +287,7 @@ from matplotlib import pyplot as plt
 data = {'actual': all_actual_types, 'predicted': all_pred_types}
 df = pd.DataFrame(data, columns=['actual', 'predicted'])
 cm = pd.crosstab(df['actual'], df['predicted'], rownames=['Actual'], colnames=['Predicted'])
+# TODO: add empty rows
 for idx in all_actual_types:
     if idx not in all_pred_types:
         cm[idx] = 0
