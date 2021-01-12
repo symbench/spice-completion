@@ -105,17 +105,15 @@ best_weights = None
 patience = es_patience
 losses = []
 accuracies = []
-learning_layers_idx = None
+learning_layers_idx = [ i for (i, layer) in enumerate(model.layers) if len(layer.weights) > 0 ]
 
 def log_gradients(gradients):
-    global learning_layers_idx 
-    if learning_layers_idx is None:
-        learning_layers_idx = [ i for (i, g) in enumerate(gradients) if np.linalg.norm(g) != 0 ]
-
     nonzero_grads = []
     for i in learning_layers_idx:
         nonzero_grads.append(gradients[i])
-        tf.summary.scalar(f'gradient norm {i}', data=np.linalg.norm(gradients[i]), step=iteration)
+        tf.summary.scalar(f'layer {i} gradient norm', data=np.linalg.norm(gradients[i]), step=iteration)
+        tf.summary.histogram(f'layer {i} weights ({model.layers[i].weights[0].shape})', data=model.layers[i].weights[0], step=iteration)
+        tf.summary.histogram(f'layer {i} gradients', data=gradients[i], step=iteration)
 
     grad_norm = sum((np.linalg.norm(g) for g in nonzero_grads)) / len(nonzero_grads)
     tf.summary.scalar('mean gradient norm', data=grad_norm, step=iteration)
@@ -129,11 +127,16 @@ def distribution_as_histogram(distribution, precision=0.01):
     return np.array(dist_as_histogram)
 
 def log_sample_prediction(epoch, prediction, target):
-    prediction_dist = distribution_as_histogram(prediction)
-    tf.summary.histogram('Sample Prediction', prediction_dist, step=epoch, buckets=len(prediction))
+    print(prediction, np.argmax(prediction), '(', np.argmax(target), ')')
+    try:
+        prediction_dist = distribution_as_histogram(prediction)
+        tf.summary.histogram(f'Sample Prediction ({np.argmax(target)})', prediction_dist, step=epoch, buckets=len(prediction))
+    except Exception as e:
+        print('Unable to convert prediction to histogram!')
+        print(prediction)
+        raise e
 
     target_dist = distribution_as_histogram(target)
-    print('target:', np.argmax(target))
     tf.summary.histogram('Sample Target', target_dist, step=epoch, buckets=len(target))
 
 # Train model
