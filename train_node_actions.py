@@ -64,13 +64,11 @@ F = dataset.n_node_features
 dropout = 0.6           # Dropout rate for the features and adjacency matrix
 dropout = 0.  # FIXME: remove
 l2_reg = 5e-6           # L2 regularization rate
-learning_rate = 5e-4    # Learning rate
+learning_rate = 5e-3    # Learning rate
 epochs = args.epochs
 es_patience = 100       # Patience for early stopping
 
 # Model definition
-print('F', F)
-
 loss_fn = CategoricalCrossentropy()
 opt = Adam(lr=learning_rate)
 #model.compile(optimizer=optimizer,

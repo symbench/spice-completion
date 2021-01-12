@@ -52,7 +52,7 @@ class OmittedWithActionsDataset(Dataset):
             graphs = [ graphs[i] for i in graph_idx ]
 
         # TODO: normalize?
-        #graphs = self.normalize_graphs(graphs)
+        graphs = self.normalize_graphs(graphs)
         return graphs
 
     def unnormalize(self, graph):
