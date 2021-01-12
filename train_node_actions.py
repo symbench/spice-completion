@@ -282,6 +282,7 @@ plt.ylabel('loss')
 plt.legend(['train', 'val'])
 plt.savefig(f'{logdir}/model_loss.png')
 
-# save the model
+# save the model(s)
 model.save(f'{logdir}/model')
-print(f'saved model to {logdir}/model')
+model.set_weights(best_weights)
+model.save(f'{logdir}/best_model')
