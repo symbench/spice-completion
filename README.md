@@ -8,13 +8,10 @@ pip install -r requirements.txt
 
 ### Graph (Attention) Neural Network
 ```bash
-python train.py path/to/netlist.net
+python train_node_actions.py LT1001_TA05.net
 ```
 
-Since it is still far from complete, it is probably best to run in the interpreter so you can explore the trained model, etc:
-```bash
-python -i train.py path/to/netlist.net
-```
+Results are stored in logs/ and can be viewed with tensorboard
 
 ### K-Nearest Neighbors
 Using KNN seems to be the closest analog to n-grams from NLP in the graph context. This is a simple approach where we are simply trying to use the component type with the most similar neighborhood that we have seen in the training set. Each point is represented as a list of the pins where each pin is represented as a sorted list of the other elements at the node. Points are compared using hamming (edit) distance.
