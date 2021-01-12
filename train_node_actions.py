@@ -21,10 +21,12 @@ from tensorflow.keras.regularizers import l2
 from spektral.data import DisjointLoader
 from spektral.layers import GATConv
 
+import types
 import datasets
 import sys
 import argparse
 from model import model
+import json
 
 parser = argparse.ArgumentParser()
 parser.add_argument('files', nargs='+')
@@ -38,13 +40,16 @@ args = parser.parse_args()
 logdir = f'logs/{args.name}/' + datetime.now().strftime('%Y%m%d-%H%M%S')
 file_writer = tf.summary.create_file_writer(logdir + "/metrics")
 file_writer.set_as_default()
-# TODO: save experiment parameters
+exp_config = vars(args)
+with open(f'{logdir}/configuration.json', 'w') as f:
+    json.dump(exp_config, f)
+exp_config = types.SimpleNamespace(**exp_config)
 
-batch_size = args.batch_size
-epochs = args.epochs
+batch_size = exp_config.batch_size
+epochs = exp_config.epochs
 
 # Load data
-dataset = datasets.omitted_with_actions(args.files)
+dataset = datasets.omitted_with_actions(exp_config.files)
 #np.set_printoptions(threshold=100000)
 
 # Train/valid/test split
@@ -67,8 +72,8 @@ F = dataset.n_node_features
 dropout = 0.6           # Dropout rate for the features and adjacency matrix
 dropout = 0.  # FIXME: remove
 l2_reg = 5e-6           # L2 regularization rate
-learning_rate = args.lr
-epochs = args.epochs
+learning_rate = exp_config.lr
+epochs = exp_config.epochs
 es_patience = 100       # Patience for early stopping
 
 # Model definition
