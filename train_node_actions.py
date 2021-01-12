@@ -55,6 +55,7 @@ dataset_tr = dataset[idx_tr]
 dataset_va = dataset[idx_va]
 dataset_te = dataset[idx_te]
 
+dataset_tr = dataset  # FIXME: Using "entire" dataset for now
 loader_tr = DisjointLoader(dataset_tr, batch_size=batch_size, epochs=epochs)
 loader_va = DisjointLoader(dataset_va, batch_size=batch_size)
 loader_te = DisjointLoader(dataset_te, batch_size=batch_size)
