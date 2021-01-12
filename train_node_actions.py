@@ -31,12 +31,14 @@ parser.add_argument('files', nargs='+')
 parser.add_argument('--name', default='train_actions')
 parser.add_argument('--epochs', default=100, type=int)
 parser.add_argument('--batch_size', default=32, type=int)
+parser.add_argument('--lr', default=0.005, type=float)
 args = parser.parse_args()
 
 # Configure tensorboard stuff
 logdir = f'logs/{args.name}/' + datetime.now().strftime('%Y%m%d-%H%M%S')
 file_writer = tf.summary.create_file_writer(logdir + "/metrics")
 file_writer.set_as_default()
+# TODO: save experiment parameters
 
 batch_size = args.batch_size
 epochs = args.epochs
@@ -64,7 +66,7 @@ F = dataset.n_node_features
 dropout = 0.6           # Dropout rate for the features and adjacency matrix
 dropout = 0.  # FIXME: remove
 l2_reg = 5e-6           # L2 regularization rate
-learning_rate = 5e-3    # Learning rate
+learning_rate = args.lr
 epochs = args.epochs
 es_patience = 100       # Patience for early stopping
 
