@@ -8,6 +8,7 @@ Graph Attention Networks (https://arxiv.org/abs/1710.10903)
 Petar Veličković, Guillem Cucurull, Arantxa Casanova, Adriana Romero, Pietro Liò, Yoshua Bengio
 """
 
+from datetime import datetime
 import tensorflow as tf
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.losses import CategoricalCrossentropy
@@ -31,6 +32,11 @@ parser.add_argument('--name', default='train_actions')
 parser.add_argument('--epochs', default=100, type=int)
 parser.add_argument('--batch_size', default=32, type=int)
 args = parser.parse_args()
+
+# Configure tensorboard stuff
+logdir = f'logs/{args.name}/' + datetime.now().strftime('%Y%m%d-%H%M%S')
+file_writer = tf.summary.create_file_writer(logdir + "/metrics")
+file_writer.set_as_default()
 
 batch_size = args.batch_size
 epochs = args.epochs
@@ -91,6 +97,25 @@ def forward(inputs, target):
 
     return action_probs, target, mask
 
+print('Fitting model')
+current_batch = epoch = model_loss = model_acc = 0
+best_val_loss = np.inf
+best_weights = None
+patience = es_patience
+losses = []
+accuracies = []
+learning_layers_idx = None
+
+def log_gradients(gradients):
+    global learning_layers_idx 
+    if learning_layers_idx is None:
+        learning_layers_idx = [ i for (i, g) in enumerate(gradients) if np.linalg.norm(g) != 0 ]
+
+    nonzero_grads = [ gradients[i] for i in learning_layers_idx ]
+    grad_norm = sum((np.linalg.norm(g) for g in nonzero_grads)) / len(nonzero_grads)
+    tf.summary.scalar('mean gradient norm', data=grad_norm, step=epoch)
+
+
 # Train model
 #@tf.function(input_signature=loader_tr.tf_signature(), experimental_relax_shapes=True)
 def train_step(inputs, target):
@@ -102,9 +127,10 @@ def train_step(inputs, target):
         acc = acc_fn(target, action_probs)
         acc_fn.reset_states()
     gradients = tape.gradient(loss, model.trainable_variables)
+    log_gradients(gradients)
+    # TODO: clip gradients?
     opt.apply_gradients(zip(gradients, model.trainable_variables))
     return action_probs, target, loss, acc
-
 
 def evaluate(loader, ops_list):
     output = []
@@ -116,15 +142,6 @@ def evaluate(loader, ops_list):
         outs = [o(target, pred) for o in ops_list]
         output.append(outs)
     return np.mean(output, 0)
-
-
-print('Fitting model')
-current_batch = epoch = model_loss = model_acc = 0
-best_val_loss = np.inf
-best_weights = None
-patience = es_patience
-losses = []
-accuracies = []
 
 for batch in loader_tr:
     target = batch[1]
