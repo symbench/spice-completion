@@ -39,13 +39,14 @@ component_types = [
 
 subcircuit_types = {}
 script_dir = os.path.dirname(os.path.realpath(__file__))
-with open(os.path.join(script_dir, 'subcircuit-types.txt'), 'r') as f:
-    subcircuit_label_pairs = (line.split(' ') for line in f if len(line.split(' ')) == 2)
-    for (subcircuit, label) in subcircuit_label_pairs:
-        label = label.strip()
-        subcircuit_types[subcircuit] = label
-        if label not in component_types:
-            component_types.append(label)
+# FIXME: uncomment below to re-enable labels for subcircuits
+# with open(os.path.join(script_dir, 'subcircuit-types.txt'), 'r') as f:
+    # subcircuit_label_pairs = (line.split(' ') for line in f if len(line.split(' ')) == 2)
+    # for (subcircuit, label) in subcircuit_label_pairs:
+        # label = label.strip()
+        # subcircuit_types[subcircuit] = label
+        # if label not in component_types:
+            # component_types.append(label)
 
 def get_component_type_index(element):
     element_type = type(element)
