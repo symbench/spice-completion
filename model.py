@@ -8,10 +8,11 @@ def custom_elu_alpha_12(x):
 def custom_elu_alpha_1(x):
     return keras.activations.elu(x, alpha=1)
 
-nodes_output = Input(shape=(66, ), batch_size=None, dtype=None, sparse=False, tensor=None, ragged=False)
-node_embeddings = Dense(150)(nodes_output)
+nodes_output = Input(shape=(29, ), batch_size=None, dtype=None, sparse=False, tensor=None, ragged=False)
+nodes_normalized = BatchNormalization()(nodes_output)
+node_embeddings = Dense(500)(nodes_normalized)
 adjacency_output = Input(shape=(None, ), sparse=True)
-graphattention = GATConv(channels=150, attn_heads=1, concat_heads=True, dropout_rate=0., return_attn_coef=False, use_bias=True, kernel_initializer=keras.initializers.GlorotUniform(seed=None), bias_initializer=keras.initializers.Zeros(), attn_kernel_initializer=keras.initializers.GlorotUniform(seed=None))
+graphattention = GATConv(channels=500, attn_heads=1, concat_heads=True, dropout_rate=0., return_attn_coef=False, use_bias=True, kernel_initializer=keras.initializers.GlorotUniform(seed=None), bias_initializer=keras.initializers.Zeros(), attn_kernel_initializer=keras.initializers.GlorotUniform(seed=None))
 
 graphattention_output = graphattention(inputs=[node_embeddings, adjacency_output])
 
