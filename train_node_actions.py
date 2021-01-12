@@ -98,7 +98,7 @@ def forward(inputs, target):
     return action_probs, target, mask
 
 print('Fitting model')
-current_batch = epoch = model_loss = model_acc = 0
+current_batch = epoch = model_loss = model_acc = iteration = 0
 best_val_loss = np.inf
 best_weights = None
 patience = es_patience
@@ -113,7 +113,7 @@ def log_gradients(gradients):
 
     nonzero_grads = [ gradients[i] for i in learning_layers_idx ]
     grad_norm = sum((np.linalg.norm(g) for g in nonzero_grads)) / len(nonzero_grads)
-    tf.summary.scalar('mean gradient norm', data=grad_norm, step=epoch)
+    tf.summary.scalar('mean gradient norm', data=grad_norm, step=iteration)
 
 
 # Train model
@@ -148,9 +148,13 @@ for batch in loader_tr:
     batch_size = target.shape[0]
     preds, targets, loss, acc = train_step(*batch)
 
+    tf.summary.scalar('loss', data=loss, step=iteration)
+    tf.summary.scalar('accuracy', data=acc, step=iteration)
+
     model_loss += loss
     model_acc += acc
     current_batch += 1
+    iteration += 1
     losses.append(loss)
     accuracies.append(acc)
     if current_batch == loader_tr.steps_per_epoch:
@@ -226,7 +230,7 @@ sorted_cols.append('Totals')
 cm = cm.reindex(sorted_cols, axis=1)
 
 sn.heatmap(cm, annot=True)
-plt.savefig(f'confusion_matrix_{args.name}.png')
+plt.savefig(f'{logdir}/confusion_matrix.png')
 plt.show()
 
 # Print summarization figures, stats
@@ -237,7 +241,7 @@ plt.title('model accuracy')
 plt.xlabel('epoch')
 plt.ylabel('accuracy')
 plt.legend(['train', 'val'])
-plt.savefig(f'model_accuracy_{args.name}.png')
+plt.savefig(f'{logdir}/model_accuracy.png')
 
 plt.clf()
 plt.plot(losses)
@@ -246,7 +250,8 @@ plt.title('model loss')
 plt.xlabel('epoch')
 plt.ylabel('loss')
 plt.legend(['train', 'val'])
-plt.savefig(f'model_loss_{args.name}.png')
+plt.savefig(f'{logdir}/model_loss.png')
 
 # save the model
-model.save(f'model_{args.name}')
+model.save(f'{logdir}/model')
+print(f'saved model to {logdir}/model')
