@@ -79,6 +79,18 @@ opt = Adam(lr=learning_rate)
 acc_fn = CategoricalAccuracy()
 model.summary()
 
+def softmax_ragged(x):
+    max_x = tf.math.reduce_max(x)
+    logits = tf.math.exp(x - max_x)
+    sums = tf.expand_dims(tf.reduce_sum(logits, 1), axis=1)
+    action_probs = tf.divide(logits.to_tensor(), sums)
+
+    # Naive (unstable) implementation
+    #logits = tf.math.exp(x)
+    #sums = tf.expand_dims(tf.reduce_sum(logits, 1), axis=1)
+    #action_probs = tf.divide(logits.to_tensor(), sums)
+    return action_probs
+
 def forward(inputs, target, training=True):
     nodes, adj, edges = inputs
     output = model((nodes, adj), training=training)
@@ -91,8 +103,8 @@ def forward(inputs, target, training=True):
     mask = tf.math.not_equal(target_rt, -1)
     logits = tf.ragged.boolean_mask(output, mask)
 
-    sums = tf.expand_dims(tf.reduce_sum(tf.math.exp(logits), 1), axis=1)
-    action_probs = tf.divide(tf.math.exp(logits).to_tensor(), sums)
+    action_probs = softmax_ragged(logits)
+
     target = tf.ragged.boolean_mask(target_rt, mask)
     target = tf.reshape(target.to_tensor(), action_probs.shape)
 
