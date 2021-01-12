@@ -51,6 +51,24 @@ class OmittedWithActionsDataset(Dataset):
 
             graphs = [ graphs[i] for i in graph_idx ]
 
+        # TODO: normalize?
+        #graphs = self.normalize_graphs(graphs)
+        return graphs
+
+    def unnormalize(self, graph):
+        return (graph.x * self.std) + self.mean
+
+    def normalize_graphs(self, graphs):
+        print(len(graphs))
+        print(graphs[0].x.shape)
+        mean = np.sum(( graph.x for graph in graphs )) / len(graphs)
+        residuals = [ graph.x - mean for graph in graphs ]
+        std = np.sum(residuals) / len(graphs)
+        for graph in graphs:
+            graph.x = (graph.x - mean) / std
+
+        self.mean = mean
+        self.std = std
         return graphs
 
     def graph_label_type(self, graph):
