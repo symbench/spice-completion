@@ -231,38 +231,5 @@ plt.ylabel('loss')
 plt.legend(['train', 'val'])
 plt.savefig(f'model_loss_{args.name}.png')
 
-# import scikitplot as skplt
-# def plot_confusion_matrix(A, X, y):
-    # plt.clf()
-    # y_pred = model.predict([X, A])
-    # pred_unk = X.argmin(2)*y_pred.argmax(2)
-    # act_unk = X.argmin(2)*y.argmax(2)
-    # y_pred = pred_unk[pred_unk.nonzero()]
-    # y_act = act_unk[act_unk.nonzero()]
-    # print('  actual unknowns:\t', y_act)
-    # print('  predicted unknowns:\t', y_pred)
-    # skplt.metrics.plot_confusion_matrix(y_act, y_pred)
-
-# print('Generating confusion matrices...')
-# print('train:')
-# plot_confusion_matrix(train_A, train_X, train_y)
-# plt.savefig(f'train_confusion_matrix_{args.name}.png')
-
-# print('val:')
-# plot_confusion_matrix(val_A, val_X, val_y)
-# plt.savefig(f'val_confusion_matrix_{args.name}.png')
-
-# print('test:')
-# plot_confusion_matrix(test_A, test_X, test_y)
-# plt.savefig(f'test_confusion_matrix_{args.name}.png')
-
-# print(f'trained on {train_X.shape[0]} points ({X.shape[0]} total)')
-
-# # Evaluate model
-# print('Evaluating model.')
-# eval_results = model.evaluate([test_X, test_A], test_y)
-
-# print('Done.\n'
-      # 'Test loss: {}\n'
-      # 'Test accuracy: {}'.format(*eval_results))
-
+# save the model
+model.save(f'model_{args.name}')
