@@ -128,9 +128,9 @@ def log_gradients(gradients):
     nonzero_grads = []
     for i in learning_layers_idx:
         nonzero_grads.append(gradients[i])
-        tf.summary.scalar(f'layer {i} gradient norm', data=np.linalg.norm(gradients[i]), step=iteration)
-        tf.summary.histogram(f'layer {i} weights ({model.layers[i].weights[0].shape})', data=model.layers[i].weights[0], step=iteration)
-        tf.summary.histogram(f'layer {i} gradients', data=gradients[i], step=iteration)
+        tf.summary.scalar(f'{model.layers[i].name} gradient norm', data=np.linalg.norm(gradients[i]), step=iteration)
+        tf.summary.histogram(f'{model.layers[i].name} weights ({model.layers[i].weights[0].shape})', data=model.layers[i].weights[0], step=iteration)
+        tf.summary.histogram(f'{model.layers[i].name} gradients', data=gradients[i], step=iteration)
 
     grad_norm = sum((np.linalg.norm(g) for g in nonzero_grads)) / len(nonzero_grads)
     tf.summary.scalar('mean gradient norm', data=grad_norm, step=iteration)
