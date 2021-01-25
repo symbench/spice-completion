@@ -146,11 +146,11 @@ def distribution_as_histogram(distribution, precision=0.01):
             dist_as_histogram.append(i)
     return np.array(dist_as_histogram)
 
-def log_sample_prediction(epoch, prediction, target):
+def log_sample_prediction(point, epoch, prediction, target):
     #print(prediction, np.argmax(prediction), '(', np.argmax(target), ')')
     try:
         prediction_dist = distribution_as_histogram(prediction)
-        tf.summary.histogram(f'Sample Prediction ({np.argmax(target)})', prediction_dist, step=epoch, buckets=len(prediction))
+        tf.summary.histogram(f'{point}. Sample Prediction ({np.argmax(target)})', prediction_dist, step=epoch, buckets=len(prediction))
     except Exception as e:
         print('Unable to convert prediction to histogram!')
         print(prediction)
@@ -246,7 +246,8 @@ for batch in loader_tr:
             sample = batch
         action_probs, targets, _ = forward(*sample, training=False)
         try:
-            log_sample_prediction(epoch, preds[0], targets[0])
+            for (i, (pred, target)) in enumerate(zip(preds, targets)):
+                log_sample_prediction(i, epoch, pred, target)
         except Exception as e:
             raise e
 
