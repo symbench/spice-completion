@@ -288,10 +288,12 @@ for (key, value) in label_dist.items():
 import pandas as pd
 import seaborn as sn
 from matplotlib import pyplot as plt
-data = {'actual': all_actual_types, 'predicted': all_pred_types}
-df = pd.DataFrame(data, columns=['actual', 'predicted'])
-cm = pd.crosstab(df['actual'], df['predicted'], rownames=['Actual'], colnames=['Predicted'])
-# TODO: add empty rows
+
+all_possible_types = [ i + 1 for i in range(max(*all_actual_types, *all_pred_types)) ]
+actual_df = pd.Categorical(all_actual_types, categories=all_possible_types)
+predicted_df = pd.Categorical(all_pred_types, categories=[*all_possible_types, 'Totals'])
+cm = pd.crosstab(actual_df, predicted_df, rownames=['Actual'], colnames=['Predicted'])
+
 for idx in all_actual_types:
     if idx not in all_pred_types:
         cm[idx] = 0
