@@ -4,7 +4,6 @@ from PySpice.Spice.Parser import SpiceParser
 from PySpice.Spice import BasicElement
 from PySpice.Spice.Netlist import Node
 import os
-np.random.seed(1235)
 
 component_types = [
     'unknown',

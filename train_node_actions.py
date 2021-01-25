@@ -34,6 +34,7 @@ parser.add_argument('--name', default='train_actions')
 parser.add_argument('--epochs', default=100, type=int)
 parser.add_argument('--batch_size', default=32, type=int)
 parser.add_argument('--lr', default=0.005, type=float)
+parser.add_argument('--seed', default=1234, type=float)
 args = parser.parse_args()
 
 # Configure tensorboard stuff
@@ -45,6 +46,8 @@ with open(f'{logdir}/configuration.json', 'w') as f:
     json.dump(exp_config, f)
 exp_config = types.SimpleNamespace(**exp_config)
 
+np.random.seed(exp_config.seed)
+tf.random.set_seed(exp_config.seed)
 batch_size = exp_config.batch_size
 epochs = exp_config.epochs
 
