@@ -303,7 +303,7 @@ cm = cm.reindex(sorted_cols, axis=1)
 
 sn.heatmap(cm, annot=True)
 plt.savefig(f'{logdir}/confusion_matrix.png')
-plt.show()
+plt.clf()
 
 # Print summarization figures, stats
 from matplotlib import pyplot as plt
