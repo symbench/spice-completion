@@ -19,6 +19,8 @@ class OmittedWithActionsDataset(Dataset):
         self.filenames = h.valid_netlist_sources(filenames)
         self.resample = resample
         self.epsilon = 0.
+        self.mean = 0
+        self.std = 1
         super().__init__(**kwargs)
 
     def read(self):
