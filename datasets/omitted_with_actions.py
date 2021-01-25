@@ -76,6 +76,12 @@ class OmittedWithActionsDataset(Dataset):
         class_idx = np.argmax(graph.x[label_idx])
         return class_idx
 
+    def get_node_types(self, nodes, normalized=True):
+        if normalized:
+            nodes = self.unnormalize(nodes)
+        node_types = np.argmax(nodes > 0.99999, axis=1)
+        return node_types
+
     def load_graph(self, components, adj, omitted_idx):
         component_count = len(components)
         action_component_count = len(all_component_types)
@@ -125,5 +131,5 @@ class OmittedWithActionsDataset(Dataset):
         count = len(components)
         return [ self.load_graph(components, adj, omitted_idx) for omitted_idx in range(count) ]
 
-def load(filenames):
-    return OmittedWithActionsDataset(filenames)
+def load(filenames, **kwargs):
+    return OmittedWithActionsDataset(filenames, **kwargs)

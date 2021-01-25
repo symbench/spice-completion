@@ -267,7 +267,7 @@ all_actual_types = []
 for batch in loader_tr:
     nodes, adj, edges = batch[0]
     actions, targets, mask = forward(*batch, training=False)
-    node_types = np.argmax(nodes, axis=1)
+    node_types = dataset.get_node_types(nodes)
     flat_mask = np.hstack(mask)
     prototype_types = tf.boolean_mask(node_types, flat_mask)
 
