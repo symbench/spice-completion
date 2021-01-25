@@ -18,6 +18,7 @@ class OmittedWithActionsDataset(Dataset):
     def __init__(self, filenames, resample=True, **kwargs):
         self.filenames = h.valid_netlist_sources(filenames)
         self.resample = resample
+        self.epsilon = 0.
         super().__init__(**kwargs)
 
     def read(self):
@@ -51,21 +52,20 @@ class OmittedWithActionsDataset(Dataset):
 
             graphs = [ graphs[i] for i in graph_idx ]
 
-        # TODO: normalize?
         graphs = self.normalize_graphs(graphs)
         return graphs
 
-    def unnormalize(self, graph):
-        return (graph.x * self.std) + self.mean
+    def unnormalize(self, graph_nodes):
+        return (graph_nodes * (self.std + self.epsilon)) + self.mean
 
     def normalize_graphs(self, graphs):
-        print(len(graphs))
-        print(graphs[0].x.shape)
-        mean = np.sum(( graph.x for graph in graphs )) / len(graphs)
-        residuals = [ graph.x - mean for graph in graphs ]
-        std = np.sum(residuals) / len(graphs)
+        node_count = sum(( graph.x.shape[0] for graph in graphs ))
+        graph_nodes = np.concatenate([ graph.x for graph in graphs ], axis=0)
+        mean = np.sum(graph_nodes, axis=0) / node_count
+        residuals = graph_nodes - mean
+        std = np.sum(residuals, axis=0) / node_count
         for graph in graphs:
-            graph.x = (graph.x - mean) / std
+            graph.x = (graph.x - mean) / (std + self.epsilon)
 
         self.mean = mean
         self.std = std
