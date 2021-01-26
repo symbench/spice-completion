@@ -15,10 +15,11 @@ action_index = len(all_component_types)
 np.set_printoptions(threshold=100000)
 
 class OmittedWithActionsDataset(Dataset):
-    def __init__(self, filenames, resample=True, shuffle=True, **kwargs):
+    def __init__(self, filenames, resample=True, shuffle=True, normalize=True, **kwargs):
         self.filenames = h.valid_netlist_sources(filenames)
         self.resample = resample
         self.shuffle = shuffle
+        self.normalize = normalize
         self.epsilon = 0.
         self.mean = 0
         self.std = 1
@@ -55,7 +56,9 @@ class OmittedWithActionsDataset(Dataset):
 
             graphs = [ graphs[i] for i in graph_idx ]
 
-        graphs = self.normalize_graphs(graphs)
+        if self.normalize:
+            graphs = self.normalize_graphs(graphs)
+
         return graphs
 
     def unnormalize(self, graph_nodes):
