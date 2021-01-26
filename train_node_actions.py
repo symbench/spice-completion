@@ -162,9 +162,9 @@ def log_sample_prediction(point, epoch, prediction, target):
 DEBUG = {}
 # Train model
 #@tf.function(input_signature=loader_tr.tf_signature(), experimental_relax_shapes=True)
-def train_step(inputs, target):
+def train_step(inputs, targets):
     with tf.GradientTape() as tape:
-        action_probs, target, _ = forward(inputs, target)
+        action_probs, target, _ = forward(inputs, targets)
 
         loss = loss_fn(target, action_probs)
         loss += sum(model.losses)
