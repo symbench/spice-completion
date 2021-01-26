@@ -15,9 +15,10 @@ action_index = len(all_component_types)
 np.set_printoptions(threshold=100000)
 
 class OmittedWithActionsDataset(Dataset):
-    def __init__(self, filenames, resample=True, **kwargs):
+    def __init__(self, filenames, resample=True, shuffle=True, **kwargs):
         self.filenames = h.valid_netlist_sources(filenames)
         self.resample = resample
+        self.shuffle = shuffle
         self.epsilon = 0.
         self.mean = 0
         self.std = 1
@@ -118,12 +119,12 @@ class OmittedWithActionsDataset(Dataset):
         y[np.arange(component_types.size)] = -1
         y[omitted_idx] = 1
 
-        # shuffle
-        indices = np.arange(x.shape[0])
-        np.random.shuffle(indices)
-        x = np.take(x, indices, axis=0)
-        y = np.take(y, indices, axis=0)
-        expanded_adj = np.take(expanded_adj, indices, axis=0)
+        if self.shuffle:
+            indices = np.arange(x.shape[0])
+            np.random.shuffle(indices)
+            x = np.take(x, indices, axis=0)
+            y = np.take(y, indices, axis=0)
+            expanded_adj = np.take(expanded_adj, indices, axis=0)
 
         a = sp.csr_matrix(expanded_adj)
         return Graph(x=x, a=a, y=y)
