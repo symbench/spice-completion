@@ -316,7 +316,7 @@ for batch in loader_tr:
         model_acc = 0
         current_batch = 0
 
-has_saved_model = exp_config.checkpoint_freq > 0 or epoch % exp_config.checkpoint_freq == 0
+has_saved_model = exp_config.checkpoint_freq > 0 and epoch % exp_config.checkpoint_freq == 0
 if not has_saved_model:
     save_checkpoint(f'checkpoint_{str(epoch).zfill(epoch_len)}', model)
 
