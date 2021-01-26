@@ -46,3 +46,19 @@ def test_correct_labels_resampled():
     for (label, count) in label_dist.items():
         max_count = expected_label_count[label]
         assert count <= max_count, f'Expected <= {max_count} #{label} labels but found {count}'
+
+def test_only_one_prototype_per_type():
+    dataset = datasets.omitted_with_actions(['LT1001_TA05.net'], resample=False, normalize=False)
+    for graph in dataset:
+        prototype_idx = (graph.x[:,-1] == 1).nonzero()[0]
+        prototypes = graph.x[prototype_idx]
+        type_counts = np.sum(prototypes, axis=0)[0:-1]
+        assert (type_counts > 1).nonzero()[0].size == 0
+
+def test_targets_should_be_different_types():
+    dataset = datasets.omitted_with_actions(['LT1001_TA05.net'], resample=False, normalize=False)
+    for graph in dataset:
+        prototype_idx = (graph.x[:,-1] == 1).nonzero()[0]
+        valid_target_idx = (graph.y > -1).nonzero()[0]
+        for (prototype, target) in zip(prototype_idx, valid_target_idx):
+            assert prototype == target
