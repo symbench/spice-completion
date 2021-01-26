@@ -1,5 +1,6 @@
 import numpy as np
 import math
+import os
 
 """
 This example reuses the Graph Attn Network from the paper:
@@ -34,6 +35,7 @@ parser.add_argument('--name', default='train_actions')
 parser.add_argument('--epochs', default=100, type=int)
 parser.add_argument('--batch_size', default=32, type=int)
 parser.add_argument('--lr', default=0.005, type=float)
+parser.add_argument('--checkpoint-freq', default=-1, type=int)
 parser.add_argument('--seed', default=1234, type=float)
 args = parser.parse_args()
 
@@ -99,7 +101,7 @@ def softmax_ragged(x):
     #action_probs = tf.divide(logits.to_tensor(), sums)
     return action_probs
 
-def forward(inputs, target, training=True):
+def forward(model, inputs, target, training=True):
     nodes, adj, edges = inputs
     output = model((nodes, adj), training=training)
     lens = [ len(graph_y) for graph_y in target ]
@@ -164,7 +166,7 @@ DEBUG = {}
 #@tf.function(input_signature=loader_tr.tf_signature(), experimental_relax_shapes=True)
 def train_step(inputs, targets):
     with tf.GradientTape() as tape:
-        action_probs, target, _ = forward(inputs, targets)
+        action_probs, target, _ = forward(model, inputs, targets)
 
         loss = loss_fn(target, action_probs)
         loss += sum(model.losses)
@@ -200,6 +202,62 @@ def evaluate(loader, ops_list):
         output.append(outs)
     return np.mean(output, 0)
 
+def select_prototype_types(prototype_types, actions):
+    node_count = actions.shape[1]
+    pred_idx = np.array([idx + i*node_count for (i, idx) in enumerate(np.argmax(actions, axis=1))])
+    pred_types = np.take(prototype_types, pred_idx)
+    return pred_types
+
+def save_checkpoint(name, model):
+    os.makedirs(f'{logdir}/{name}', exist_ok=True)
+    loader_tr = DisjointLoader(dataset_tr, batch_size=batch_size, epochs=1)
+    all_pred_types = []
+    all_actual_types = []
+    for batch in loader_tr:
+        nodes, adj, edges = batch[0]
+        actions, targets, mask = forward(model, *batch, training=False)
+        node_types = dataset.get_node_types(nodes)
+        flat_mask = np.hstack(mask)
+        prototype_types = tf.boolean_mask(node_types, flat_mask)
+
+        pred_types = select_prototype_types(prototype_types, actions)
+        actual_types = select_prototype_types(prototype_types, targets)
+
+        all_pred_types.extend(pred_types)
+        all_actual_types.extend(actual_types)
+
+    unique, counts = np.unique(all_actual_types, return_counts=True)
+    label_dist = dict(zip(unique, counts))
+
+    # confusion matrix
+    import pandas as pd
+    import seaborn as sn
+    from matplotlib import pyplot as plt
+
+    all_possible_types = [ i + 1 for i in range(max(*all_actual_types, *all_pred_types)) ]
+    actual_df = pd.Categorical(all_actual_types, categories=all_possible_types)
+    predicted_df = pd.Categorical(all_pred_types, categories=[*all_possible_types, 'Totals'])
+    cm = pd.crosstab(actual_df, predicted_df, rownames=['Actual'], colnames=['Predicted'])
+
+    for idx in all_actual_types:
+        if idx not in all_pred_types:
+            cm[idx] = 0
+
+    totals = [ sum(row) for (_, row) in cm.iterrows() ]
+    cm['Totals'] = totals
+    sorted_cols = sorted([ c for c in cm.columns if type(c) is int ])
+    sorted_cols.append('Totals')
+    cm = cm.reindex(sorted_cols, axis=1)
+
+    sn.heatmap(cm, annot=True)
+    plt.title(f'confusion matrix ({name})')
+    plt.savefig(f'{logdir}/{name}/confusion_matrix.png')
+    plt.clf()
+
+    # save the model(s)
+    model.save(f'{logdir}/{name}/model')
+
+epoch_len = len(str(exp_config.epochs))
 sample = None
 for batch in loader_tr:
     target = batch[1]
@@ -244,74 +302,31 @@ for batch in loader_tr:
                 #break
         if sample is None:
             sample = batch
-        action_probs, targets, _ = forward(*sample, training=False)
+        action_probs, targets, _ = forward(model, *sample, training=False)
         try:
             for (i, (pred, target)) in enumerate(zip(preds, targets)):
                 log_sample_prediction(i, epoch, pred, target)
         except Exception as e:
             raise e
 
+        if exp_config.checkpoint_freq > 0 and epoch % exp_config.checkpoint_freq == 0:
+            save_checkpoint(f'checkpoint_{str(epoch).zfill(epoch_len)}', model)
+
         model_loss = 0
         model_acc = 0
         current_batch = 0
 
 print('-------- Evaluating --------')
-def select_prototype_types(prototype_types, actions):
-    node_count = actions.shape[1]
-    pred_idx = np.array([idx + i*node_count for (i, idx) in enumerate(np.argmax(actions, axis=1))])
-    pred_types = np.take(prototype_types, pred_idx)
-    return pred_types
+has_saved_model = exp_config.checkpoint_freq > 0 or epoch % exp_config.checkpoint_freq == 0
+if not has_saved_model:
+    save_checkpoint(f'checkpoint_{str(epoch).zfill(epoch_len)}', model)
 
-loader_tr = DisjointLoader(dataset_tr, batch_size=batch_size, epochs=1)
-all_pred_types = []
-all_actual_types = []
-for batch in loader_tr:
-    nodes, adj, edges = batch[0]
-    actions, targets, mask = forward(*batch, training=False)
-    node_types = dataset.get_node_types(nodes)
-    flat_mask = np.hstack(mask)
-    prototype_types = tf.boolean_mask(node_types, flat_mask)
-
-    pred_types = select_prototype_types(prototype_types, actions)
-    actual_types = select_prototype_types(prototype_types, targets)
-
-    all_pred_types.extend(pred_types)
-    all_actual_types.extend(actual_types)
-
-unique, counts = np.unique(all_actual_types, return_counts=True)
-label_dist = dict(zip(unique, counts))
-print('label distribution:')
-for (key, value) in label_dist.items():
-    print(f'{key}: {value}')
-
-# confusion matrix
-import pandas as pd
-import seaborn as sn
-from matplotlib import pyplot as plt
-
-all_possible_types = [ i + 1 for i in range(max(*all_actual_types, *all_pred_types)) ]
-actual_df = pd.Categorical(all_actual_types, categories=all_possible_types)
-predicted_df = pd.Categorical(all_pred_types, categories=[*all_possible_types, 'Totals'])
-cm = pd.crosstab(actual_df, predicted_df, rownames=['Actual'], colnames=['Predicted'])
-
-for idx in all_actual_types:
-    if idx not in all_pred_types:
-        cm[idx] = 0
-
-totals = [ sum(row) for (_, row) in cm.iterrows() ]
-cm['Totals'] = totals
-sorted_cols = sorted([ c for c in cm.columns if type(c) is int ])
-sorted_cols.append('Totals')
-cm = cm.reindex(sorted_cols, axis=1)
-
-sn.heatmap(cm, annot=True)
-plt.savefig(f'{logdir}/confusion_matrix.png')
-plt.clf()
+model.set_weights(best_weights)
+save_checkpoint('best_model', model)
 
 # Print summarization figures, stats
 from matplotlib import pyplot as plt
 plt.plot(accuracies)
-#plt.plot(history.history['val_acc'])
 plt.title('model accuracy')
 plt.xlabel('epoch')
 plt.ylabel('accuracy')
@@ -320,14 +335,9 @@ plt.savefig(f'{logdir}/model_accuracy.png')
 
 plt.clf()
 plt.plot(losses)
-#plt.plot(history.history['val_loss'])
 plt.title('model loss')
 plt.xlabel('epoch')
 plt.ylabel('loss')
 plt.legend(['train', 'val'])
 plt.savefig(f'{logdir}/model_loss.png')
-
-# save the model(s)
-model.save(f'{logdir}/model')
-model.set_weights(best_weights)
-model.save(f'{logdir}/best_model')
+plt.clf()
