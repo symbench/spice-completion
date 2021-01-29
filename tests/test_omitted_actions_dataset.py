@@ -62,3 +62,11 @@ def test_targets_should_be_different_types():
         valid_target_idx = (graph.y > -1).nonzero()[0]
         for (prototype, target) in zip(prototype_idx, valid_target_idx):
             assert prototype == target
+
+def test_components_should_be_connected():
+    dataset = datasets.omitted_with_actions(['LT1001_TA05.net'], resample=False, normalize=False, shuffle=False)
+    for (i, graph) in enumerate(dataset):
+        adj = graph.a.toarray()
+        edge_counts = np.sum(adj, axis=0)
+        for (edge_index, edge_count) in enumerate(edge_counts):
+            assert edge_count > 0, f'Found disconnected node: {edge_index}'
