@@ -113,6 +113,7 @@ class OmittedWithActionsDataset(Dataset):
         x[action_indices, action_types] = 1
 
         expanded_adj = np.zeros((x.shape[0], x.shape[0]))
+        expanded_adj[0:adj.shape[0], 0:adj.shape[1]] = adj
         # add connectivity to the action nodes (unidirectional)
         expanded_adj[:component_count,action_indices] = 1
         expanded_adj[omitted_idx, :] = 0
