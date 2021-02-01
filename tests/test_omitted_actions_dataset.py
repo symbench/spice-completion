@@ -70,3 +70,26 @@ def test_components_should_be_connected():
         edge_counts = np.sum(adj, axis=0)
         for (edge_index, edge_count) in enumerate(edge_counts):
             assert edge_count > 0, f'Found disconnected node: {edge_index}'
+
+def test_no_dupe_types_in_proto():
+    dataset = datasets.omitted_with_actions(['LT1001_TA05.net'], resample=False, normalize=False, shuffle=False)
+    for (i, graph) in enumerate(dataset):
+        targets = graph.y
+        prototypes = graph.x[(targets > -1).nonzero()[0]]
+        node_types = dataset.get_node_types(prototypes)
+        types, counts = np.unique(node_types, return_counts=True)
+        type_dict = dict(zip(types, counts))
+        for (node_type, count) in type_dict.items():
+            assert count == 1, f'Found {count} nodes of type {node_type}'
+
+def test_no_dupe_types_shuffled():
+    dataset = datasets.omitted_with_actions(['LT1001_TA05.net'], resample=False, normalize=False)
+    for (i, graph) in enumerate(dataset):
+        targets = graph.y
+        prototypes = graph.x[(targets > -1).nonzero()[0]]
+        node_types = dataset.get_node_types(prototypes)
+        print(node_types)
+        types, counts = np.unique(node_types, return_counts=True)
+        type_dict = dict(zip(types, counts))
+        for (node_type, count) in type_dict.items():
+            assert count == 1, f'Found {count} nodes of type {node_type}'
