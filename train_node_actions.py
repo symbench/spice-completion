@@ -149,7 +149,7 @@ def distribution_as_histogram(distribution, precision=0.01):
     return np.array(dist_as_histogram)
 
 def log_sample_prediction(point, epoch, prediction, target):
-    #print(prediction, np.argmax(prediction), '(', np.argmax(target), ')')
+    print('>>> sample_prediction:', np.argmax(prediction), np.argmax(target), f'({target.shape})')
     try:
         prediction_dist = distribution_as_histogram(prediction)
         tf.summary.histogram(f'{point}. Sample Prediction ({np.argmax(target)})', prediction_dist, step=epoch, buckets=len(prediction))
@@ -166,10 +166,31 @@ DEBUG = {}
 #@tf.function(input_signature=loader_tr.tf_signature(), experimental_relax_shapes=True)
 def train_step(inputs, targets):
     with tf.GradientTape() as tape:
-        action_probs, target, _ = forward(model, inputs, targets)
+        action_probs, target, mask = forward(model, inputs, targets)
 
         loss = loss_fn(target, action_probs)
         loss += sum(model.losses)
+
+        print('---- Computing accuracy ----')
+        log_prediction(inputs[0], target, action_probs, mask)
+        # print('target', target, np.argmax(target, axis=1))
+        # print('action_probs', action_probs, np.argmax(action_probs, axis=1))
+        # print('inputs[0].shape', inputs[0].shape)
+        # print('targets.shape', targets.shape)
+        # graph_size = targets.shape[1]
+        # idx_row_col = (targets > -1).nonzero()
+        # idx = [  i*graph_size + idx for (i, idx) in zip(idx_row_col[0], idx_row_col[1]) ]
+        # prototypes = inputs[0][idx]
+        # node_types = dataset.get_node_types(prototypes)
+        # # print('(prototype) node_types:', node_types)
+        # proto_size = prototypes.shape[1]
+        # target_idx = [ idx + i*proto_size for (i, idx) in enumerate(np.argmax(target, axis=1))]
+        # pred_idx = [ idx + i*proto_size for (i, idx) in enumerate(np.argmax(action_probs, axis=1))]
+        # pred_types = [ node_types[idx] for idx in pred_idx ]
+        # target_types = [ node_types[idx] for idx in target_idx ]
+        #print('Predictions:', pred_types, f'({target_types})')
+
+        # TODO: get the types?
         acc = acc_fn(target, action_probs)
         acc_fn.reset_states()
     gradients = tape.gradient(loss, model.trainable_variables)
@@ -205,23 +226,34 @@ def evaluate(loader, ops_list):
 def select_prototype_types(prototype_types, actions):
     node_count = actions.shape[1]
     pred_idx = np.array([idx + i*node_count for (i, idx) in enumerate(np.argmax(actions, axis=1))])
+    #print('--- idx', pred_idx, np.argmax(actions, axis=1), node_count, prototype_types.shape)
     pred_types = np.take(prototype_types, pred_idx)
     return pred_types
 
+def log_prediction(nodes, targets, predictions, mask):
+    node_types = dataset.get_node_types(nodes)
+    flat_mask = np.hstack(mask)
+    prototype_types = tf.boolean_mask(node_types, flat_mask)
+    #print('prototype_types', prototype_types)
+    print('Predictions', np.argmax(predictions, axis=1), f'({np.argmax(targets, axis=1)})')
+
+    pred_types = select_prototype_types(prototype_types, predictions)
+    actual_types = select_prototype_types(prototype_types, targets)
+    print('  Types:', pred_types, f'({actual_types})')
+    return pred_types, actual_types
+
 def save_checkpoint(name, model):
     os.makedirs(f'{logdir}/{name}', exist_ok=True)
-    loader_tr = DisjointLoader(dataset_tr, batch_size=batch_size, epochs=1)
+    loader = DisjointLoader(dataset_tr, batch_size=batch_size, epochs=1)
     all_pred_types = []
     all_actual_types = []
-    for batch in loader_tr:
+    print('>>> saving checkpoint <<<')
+    for batch in loader:
         nodes, adj, edges = batch[0]
         actions, targets, mask = forward(model, *batch, training=False)
-        node_types = dataset.get_node_types(nodes)
-        flat_mask = np.hstack(mask)
-        prototype_types = tf.boolean_mask(node_types, flat_mask)
-
-        pred_types = select_prototype_types(prototype_types, actions)
-        actual_types = select_prototype_types(prototype_types, targets)
+        pred_types, actual_types = log_prediction(nodes, targets, actions, mask)
+        print('pred_types:', pred_types)
+        print('actual_types:', actual_types)
 
         all_pred_types.extend(pred_types)
         all_actual_types.extend(actual_types)
@@ -260,8 +292,6 @@ def save_checkpoint(name, model):
 epoch_len = len(str(exp_config.epochs))
 sample = None
 for batch in loader_tr:
-    target = batch[1]
-    batch_size = target.shape[0]
     preds, targets, loss, acc = train_step(*batch)
 
     tf.summary.scalar('loss', data=loss, step=iteration)
@@ -300,14 +330,18 @@ for batch in loader_tr:
             #if patience == 0:
                 #print('Early stopping (best val_loss: {})'.format(best_val_loss))
                 #break
-        if sample is None:
-            sample = batch
-        action_probs, targets, _ = forward(model, *sample, training=False)
-        try:
-            for (i, (pred, target)) in enumerate(zip(preds, targets)):
-                log_sample_prediction(i, epoch, pred, target)
-        except Exception as e:
-            raise e
+        #if sample is None:
+            #sample = batch
+        #action_probs, targets, _ = forward(model, *sample, training=False)
+        # FIXME: uncomment this!
+        # try:
+            # print('sample', sample)
+            # print('preds', preds)
+            # print('action_probs', action_probs)
+            # for (i, (pred, target)) in enumerate(zip(action_probs, targets)):
+                # log_sample_prediction(i, epoch, pred, target)
+        # except Exception as e:
+            # raise e
 
         if exp_config.checkpoint_freq > 0 and epoch % exp_config.checkpoint_freq == 0:
             save_checkpoint(f'checkpoint_{str(epoch).zfill(epoch_len)}', model)
