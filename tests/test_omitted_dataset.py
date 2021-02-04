@@ -1,5 +1,5 @@
-import datasets
-from datasets import helpers as h
+import spice_completion.datasets as datasets
+from spice_completion.datasets import helpers as h
 import numpy as np
 
 expected_label_count = {1: 4, 2: 2, 3:3, 4: 1, 5: 1, 6: 9}

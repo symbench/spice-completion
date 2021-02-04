@@ -9,7 +9,7 @@ def custom_elu_alpha_1(x):
     return keras.activations.elu(x, alpha=1)
 
 nodes_output = Input(shape=(29, ), batch_size=None, dtype=None, sparse=False, tensor=None, ragged=False)
-nodes_normalized = BatchNormalization()(nodes_output)
+nodes_normalized = BatchNormalization(momentum=0.9)(nodes_output)
 node_embeddings = Dense(100)(nodes_normalized)
 adjacency_output = Input(shape=(None, ), sparse=True)
 graphattention = GATConv(channels=100, attn_heads=1, concat_heads=True, dropout_rate=0., return_attn_coef=False, use_bias=True, kernel_initializer=keras.initializers.GlorotUniform(seed=None), bias_initializer=keras.initializers.Zeros(), attn_kernel_initializer=keras.initializers.GlorotUniform(seed=None))

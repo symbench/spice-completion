@@ -1,6 +1,6 @@
 """
     This creates a dataset where X is the graph where one component has been removed.
-    "Action nodes" have been added for the possible actions to take.
+    Unlike the OmittedWithActions, this is simply a graph classification task.
 """
 import numpy as np
 import random
@@ -14,7 +14,7 @@ embedding_size = len(all_component_types) + 1
 action_index = len(all_component_types)
 np.set_printoptions(threshold=100000)
 
-class OmittedWithActionsDataset(Dataset):
+class OmittedComponentDataset(Dataset):
     def __init__(self, filenames, resample=True, shuffle=True, normalize=True, **kwargs):
         self.filenames = h.valid_netlist_sources(filenames)
         self.resample = resample
@@ -113,7 +113,6 @@ class OmittedWithActionsDataset(Dataset):
         x[action_indices, action_types] = 1
 
         expanded_adj = np.zeros((x.shape[0], x.shape[0]))
-        expanded_adj[0:adj.shape[0], 0:adj.shape[1]] = adj
         # add connectivity to the action nodes (unidirectional)
         expanded_adj[:component_count,action_indices] = 1
         expanded_adj[omitted_idx, :] = 0
@@ -139,4 +138,4 @@ class OmittedWithActionsDataset(Dataset):
         return [ self.load_graph(components, adj, omitted_idx) for omitted_idx in range(count) ]
 
 def load(filenames, **kwargs):
-    return OmittedWithActionsDataset(filenames, **kwargs)
+    return OmittedComponentDataset(filenames, **kwargs)

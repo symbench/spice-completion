@@ -1,4 +1,4 @@
-import datasets
+import spice_completion.datasets as datasets
 import numpy as np
 
 expected_label_count = {1: 4, 2: 2, 3:3, 4: 1, 5: 1, 6: 9}
