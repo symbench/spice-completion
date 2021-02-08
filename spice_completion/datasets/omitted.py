@@ -3,6 +3,7 @@ import numpy as np
 from . import helpers as h
 from spektral.data import Dataset, Graph
 import scipy.sparse as sp
+import random
 component_types = h.component_types
 
 class OmittedDataset(Dataset):
