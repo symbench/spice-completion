@@ -61,7 +61,10 @@ class OmittedDataset(Dataset):
         graph_nodes = np.concatenate([ graph.x for graph in graphs ], axis=0)
         mean = np.sum(graph_nodes, axis=0) / node_count
         residuals = graph_nodes - mean
-        std = np.sum(residuals, axis=0) / node_count
+        raw_std = np.sum(residuals, axis=0) / node_count
+        nonzero_idx = raw_std.nonzero()[0]
+        std = np.ones(raw_std.shape)
+        std[nonzero_idx] = raw_std[nonzero_idx]
         for graph in graphs:
             graph.x = (graph.x - mean) / (std + self.epsilon)
 
