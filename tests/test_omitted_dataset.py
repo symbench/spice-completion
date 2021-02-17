@@ -20,3 +20,9 @@ def test_component_removed():
     (components, adj) = h.netlist_as_graph(contents)
     for graph in dataset:
         assert graph.x.shape[0] == len(components) - 1
+
+def test_no_nans():
+    dataset = datasets.omitted([filename])
+    for graph in dataset:
+        print(tf.is_nan(graph.x))
+
