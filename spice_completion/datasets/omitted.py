@@ -87,7 +87,8 @@ class OmittedDataset(Dataset):
         embedding_size = len(h.component_types)
         all_component_types = np.array([ h.get_component_type_index(c) for c in components ])
         omitted_type = all_component_types[omitted_idx]
-        component_types = all_component_types[[ i for i in range(len(all_component_types)) if i != omitted_idx]]
+        included_idx = [ i for i in range(len(all_component_types)) if i != omitted_idx]
+        component_types = all_component_types[included_idx]
         component_count = component_types.size
 
         # nodes...
@@ -95,6 +96,8 @@ class OmittedDataset(Dataset):
         x[np.arange(component_types.size), component_types] = 1
 
         expanded_adj = np.zeros((x.shape[0], x.shape[0]))
+        for (new_i, old_i) in enumerate(included_idx):
+            expanded_adj[new_i] = adj[old_i,included_idx]
 
         # labels...
         y = np.zeros((len(h.component_types),))
