@@ -1,5 +1,5 @@
 import numpy as np
-# import networkx as nx
+import networkx as nx
 from . import helpers as h
 from spektral.data import Dataset, Graph
 import scipy.sparse as sp
@@ -116,6 +116,18 @@ class OmittedDataset(Dataset):
         (components, adj) = h.netlist_as_graph(filename)
         count = len(components)
         return [ self.load_graph(components, adj, omitted_idx) for omitted_idx in range(count) ]
+
+    def to_networkx(self, sgraph):
+        graph = nx.Graph()
+        node_count = sgraph.x.shape[0]
+        nodes = ( (i, {'embedding': sgraph.x[i]}) for i in range(node_count) )
+        graph.add_nodes_from(nodes)
+
+        row_idx, col_idx = sgraph.a.nonzero()
+        edges = zip(row_idx, col_idx)
+        graph.add_edges_from(edges)
+
+        return graph
 
 def load(filenames, **kwargs):
     return OmittedDataset(filenames, **kwargs)
