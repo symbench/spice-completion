@@ -74,9 +74,8 @@ class OmittedDataset(Dataset):
         return graphs
 
     def graph_label_type(self, graph):
-        label_idx = np.argmax(graph.y)
-        class_idx = np.argmax(graph.x[label_idx])
-        return class_idx
+        omitted_type_idx = np.argmax(graph.y)
+        return omitted_type_idx
 
     def get_node_types(self, nodes, normalized=True):
         if normalized:
