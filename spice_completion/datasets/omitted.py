@@ -7,7 +7,7 @@ import random
 component_types = h.component_types
 
 class OmittedDataset(Dataset):
-    def __init__(self, filenames, resample=True, shuffle=True, normalize=True, **kwargs):
+    def __init__(self, filenames, resample=True, shuffle=True, normalize=True, min_edge_count=0, **kwargs):
         self.filenames = h.valid_netlist_sources(filenames)
         self.resample = resample
         self.shuffle = shuffle
@@ -15,6 +15,7 @@ class OmittedDataset(Dataset):
         self.epsilon = 0.
         self.mean = 0
         self.std = 1
+        self.min_edge_count = min_edge_count
         super().__init__(**kwargs)
 
     def read(self):
@@ -110,12 +111,15 @@ class OmittedDataset(Dataset):
             expanded_adj = np.take(expanded_adj, indices, axis=0)
 
         a = sp.csr_matrix(expanded_adj)
+
         return Graph(x=x, a=a, y=y)
 
     def load_graphs(self, filename):
         (components, adj) = h.netlist_as_graph(filename)
         count = len(components)
-        return [ self.load_graph(components, adj, omitted_idx) for omitted_idx in range(count) ]
+
+        graphs = ( self.load_graph(components, adj, omitted_idx) for omitted_idx in range(count) )
+        return [ graph for graph in graphs if edge_count(graph) >= self.min_edge_count ]
 
     def to_networkx(self, sgraph):
         graph = nx.Graph()
@@ -128,6 +132,10 @@ class OmittedDataset(Dataset):
         graph.add_edges_from(edges)
 
         return graph
+
+def edge_count(graph):
+    row_idx, col_idx = graph.a.nonzero()
+    return len(row_idx)
 
 def load(filenames, **kwargs):
     return OmittedDataset(filenames, **kwargs)
