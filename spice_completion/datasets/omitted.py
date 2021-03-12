@@ -2,20 +2,32 @@ import numpy as np
 import networkx as nx
 from . import helpers as h
 from spektral.data import Dataset, Graph
+import deepsnap.graph
 import scipy.sparse as sp
 import random
+import torch
 component_types = h.component_types
 
+def ensure_no_nan(tensor):
+    nan_idx = torch.isnan(tensor).nonzero(as_tuple=True)
+    nan_count = nan_idx[0].shape[0]
+    assert nan_count == 0, 'nodes contain nans'
+
 class OmittedDataset(Dataset):
-    def __init__(self, filenames, resample=True, shuffle=True, normalize=True, min_edge_count=0, **kwargs):
+    def __init__(self, filenames, resample=True, shuffle=True, normalize=True, min_edge_count=0,
+            mean=None, std=None, train=True,**kwargs):
         self.filenames = h.valid_netlist_sources(filenames)
         self.resample = resample
         self.shuffle = shuffle
-        self.normalize = normalize
         self.epsilon = 0.
-        self.mean = 0
-        self.std = 1
+        if normalize:
+            self.mean = mean
+            self.std = std
+        else:
+            self.mean = 0
+            self.std = 1
         self.min_edge_count = min_edge_count
+        self.train = train
         super().__init__(**kwargs)
 
     def read(self):
@@ -49,8 +61,7 @@ class OmittedDataset(Dataset):
 
             graphs = [ graphs[i] for i in graph_idx ]
 
-        if self.normalize:
-            graphs = self.normalize_graphs(graphs)
+        graphs = self.normalize_graphs(graphs)
 
         return graphs
 
@@ -58,19 +69,21 @@ class OmittedDataset(Dataset):
         return (graph_nodes * (self.std + self.epsilon)) + self.mean
 
     def normalize_graphs(self, graphs):
-        node_count = sum(( graph.x.shape[0] for graph in graphs ))
-        graph_nodes = np.concatenate([ graph.x for graph in graphs ], axis=0)
-        mean = np.sum(graph_nodes, axis=0) / node_count
-        residuals = graph_nodes - mean
-        raw_std = np.sum(residuals, axis=0) / node_count
-        nonzero_idx = raw_std.nonzero()[0]
-        std = np.ones(raw_std.shape)
-        std[nonzero_idx] = raw_std[nonzero_idx]
-        for graph in graphs:
-            graph.x = (graph.x - mean) / (std + self.epsilon)
+        if self.mean is None or self.std is None:
+            node_count = sum(( graph.x.shape[0] for graph in graphs ))
+            graph_nodes = np.concatenate([ graph.x for graph in graphs ], axis=0)
+            mean = np.sum(graph_nodes, axis=0) / node_count
+            residuals = graph_nodes - mean
+            raw_std = np.sum(residuals, axis=0) / node_count
+            nonzero_idx = raw_std.nonzero()[0]
+            std = np.ones(raw_std.shape)
+            std[nonzero_idx] = raw_std[nonzero_idx]
+            self.mean = mean
+            self.std = std
 
-        self.mean = mean
-        self.std = std
+        for graph in graphs:
+            graph.x = (graph.x - self.mean) / (self.std + self.epsilon)
+
         return graphs
 
     def graph_label_type(self, graph):
@@ -83,10 +96,10 @@ class OmittedDataset(Dataset):
         node_types = np.argmax(nodes > 0.99999, axis=1)
         return node_types
 
-    def load_graph(self, components, adj, omitted_idx):
+    def load_graph(self, components, adj, omitted_idx=None):
         embedding_size = len(h.component_types)
         all_component_types = np.array([ h.get_component_type_index(c) for c in components ])
-        omitted_type = all_component_types[omitted_idx]
+        omitted_type = all_component_types[omitted_idx] if omitted_idx is not None else 0
         included_idx = [ i for i in range(len(all_component_types)) if i != omitted_idx]
         component_types = all_component_types[included_idx]
         component_count = component_types.size
@@ -115,9 +128,11 @@ class OmittedDataset(Dataset):
 
     def load_graphs(self, filename):
         (components, adj) = h.netlist_as_graph(filename)
-        count = len(components)
-
-        graphs = ( self.load_graph(components, adj, omitted_idx) for omitted_idx in range(count) )
+        if self.train:
+            count = len(components)
+            graphs = ( self.load_graph(components, adj, omitted_idx) for omitted_idx in range(count) )
+        else:
+            graphs = [ self.load_graph(components, adj) ]
         return [ graph for graph in graphs if edge_count(graph) >= self.min_edge_count ]
 
     def to_networkx(self, sgraph):
@@ -131,6 +146,20 @@ class OmittedDataset(Dataset):
         graph.add_edges_from(edges)
 
         return graph
+
+    def to_deepsnap(self):
+        graphs = []
+        for sgraph in self:
+            nxgraph = self.to_networkx(sgraph)
+            label = torch.tensor([sgraph.y.argmax()])
+            node_features = torch.tensor(sgraph.x)
+            ensure_no_nan(node_features)
+
+            deepsnap.graph.Graph.add_graph_attr(nxgraph, 'graph_label', label)
+            deepsnap.graph.Graph.add_graph_attr(nxgraph, 'node_feature', node_features)
+            graphs.append(deepsnap.graph.Graph(nxgraph))
+
+        return graphs
 
 def edge_count(graph):
     row_idx, col_idx = graph.a.nonzero()
