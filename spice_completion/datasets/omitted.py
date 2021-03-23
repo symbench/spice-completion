@@ -138,7 +138,7 @@ class OmittedDataset(Dataset):
     def to_networkx(self, sgraph):
         graph = nx.Graph()
         node_count = sgraph.x.shape[0]
-        nodes = ( (i, {'embedding': sgraph.x[i]}) for i in range(node_count) )
+        nodes = ( (i, {'node_feature': torch.tensor(sgraph.x[i])}) for i in range(node_count) )
         graph.add_nodes_from(nodes)
 
         row_idx, col_idx = sgraph.a.nonzero()
