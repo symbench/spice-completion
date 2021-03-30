@@ -96,7 +96,8 @@ class OmittedDataset(Dataset):
         node_types = np.argmax(nodes > 0.99999, axis=1)
         return node_types
 
-    def load_graph(self, components, adj, omitted_idx=None):
+    @staticmethod
+    def load_graph(components, adj, omitted_idx=None, shuffle=False):
         embedding_size = len(h.component_types)
         all_component_types = np.array([ h.get_component_type_index(c) for c in components ])
         omitted_type = all_component_types[omitted_idx] if omitted_idx is not None else 0
@@ -116,7 +117,7 @@ class OmittedDataset(Dataset):
         y = np.zeros((len(h.component_types),))
         y[omitted_type] = 1
 
-        if self.shuffle:
+        if shuffle:
             indices = np.arange(x.shape[0])
             np.random.shuffle(indices)
             x = np.take(x, indices, axis=0)
@@ -126,37 +127,43 @@ class OmittedDataset(Dataset):
 
         return Graph(x=x, a=a, y=y)
 
-    def load_graphs(self, filename):
-        (components, adj) = h.netlist_as_graph(filename)
+    def load_graphs(self, source):
+        (components, adj) = h.netlist_as_graph(source)
         if self.train:
             count = len(components)
-            graphs = ( self.load_graph(components, adj, omitted_idx) for omitted_idx in range(count) )
+            graphs = ( self.load_graph(components, adj, omitted_idx, self.shuffle) for omitted_idx in range(count) )
         else:
-            graphs = [ self.load_graph(components, adj) ]
+            graphs = [ self.load_graph(components, adj, shuffle=self.shuffle) ]
         return [ graph for graph in graphs if edge_count(graph) >= self.min_edge_count ]
 
-    def to_networkx(self, sgraph):
-        graph = nx.Graph()
-        node_count = sgraph.x.shape[0]
-        nodes = ( (i, {'node_feature': torch.tensor(sgraph.x[i])}) for i in range(node_count) )
-        graph.add_nodes_from(nodes)
+    def to_networkx(self):
+        graphs = []
+        for sgraph in self:
+            node_count = sgraph.x.shape[0]
+            nodes = ( (i, {'node_feature': torch.tensor(sgraph.x[i])}) for i in range(node_count) )
+            graph = nx.Graph()
+            graph.add_nodes_from(nodes)
 
-        row_idx, col_idx = sgraph.a.nonzero()
-        edges = zip(row_idx, col_idx)
-        graph.add_edges_from(edges)
+            row_idx, col_idx = sgraph.a.nonzero()
+            edges = list(zip(row_idx, col_idx))
+            graph.add_edges_from(edges)
+            edge_count = len(graph.edges)
+            assert 2 * edge_count == len(edges), f'Expected {len(edges)} edges. Found {edge_count}'
+            graphs.append(graph)
 
-        return graph
+        return graphs
 
     def to_deepsnap(self):
         graphs = []
-        for sgraph in self:
-            nxgraph = self.to_networkx(sgraph)
+        nxgraphs = self.to_networkx()
+        src_graphs = zip(nxgraphs, (sgraph for sgraph in self))
+
+        for (sgraph, nxgraph) in src_graphs:
             label = torch.tensor([sgraph.y.argmax()])
             node_features = torch.tensor(sgraph.x)
             ensure_no_nan(node_features)
 
             deepsnap.graph.Graph.add_graph_attr(nxgraph, 'graph_label', label)
-            deepsnap.graph.Graph.add_graph_attr(nxgraph, 'node_feature', node_features)
             graphs.append(deepsnap.graph.Graph(nxgraph))
 
         return graphs
