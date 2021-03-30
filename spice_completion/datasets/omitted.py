@@ -117,11 +117,12 @@ class OmittedDataset(Dataset):
         y = np.zeros((len(h.component_types),))
         y[omitted_type] = 1
 
-        if shuffle:
-            indices = np.arange(x.shape[0])
-            np.random.shuffle(indices)
-            x = np.take(x, indices, axis=0)
-            expanded_adj = np.take(expanded_adj, indices, axis=0)
+        # FIXME: this is not shuffled correctly
+        # if shuffle:
+            # indices = np.arange(x.shape[0])
+            # np.random.shuffle(indices)
+            # x = np.take(x, indices, axis=0)
+            # expanded_adj = np.take(expanded_adj, indices, axis=0)
 
         a = sp.csr_matrix(expanded_adj)
 
@@ -156,7 +157,7 @@ class OmittedDataset(Dataset):
     def to_deepsnap(self):
         graphs = []
         nxgraphs = self.to_networkx()
-        src_graphs = zip(nxgraphs, (sgraph for sgraph in self))
+        src_graphs = zip((sgraph for sgraph in self), nxgraphs)
 
         for (sgraph, nxgraph) in src_graphs:
             label = torch.tensor([sgraph.y.argmax()])
