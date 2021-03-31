@@ -2,6 +2,7 @@ import spice_completion.datasets as datasets
 import numpy as np
 
 expected_label_count = {1: 4, 2: 2, 3:3, 4: 1, 5: 1, 6: 9}
+filename = 'LT1001_TA05.net'
 
 def test_load_graphs():
     dataset = datasets.omitted_with_actions(['LT1001_TA05.net'], resample=False)
@@ -93,3 +94,27 @@ def test_no_dupe_types_shuffled():
         type_dict = dict(zip(types, counts))
         for (node_type, count) in type_dict.items():
             assert count == 1, f'Found {count} nodes of type {node_type}'
+
+def test_has_edges():
+    dataset = datasets.omitted_with_actions(['LT1001_TA05.net'], resample=False, normalize=False)
+    for graph in dataset:
+        assert graph.n_edges > 0
+
+def test_to_networkx():
+    dataset = datasets.omitted_with_actions([filename], shuffle=False)
+    nx_data = datasets.helpers.to_networkx(dataset)
+
+    assert len(dataset) == len(nx_data), f'Expected to find 20 graphs. Found {len(nx_data)}'
+    for (i, nx_graph) in enumerate(nx_data):
+        # Check node counts
+        assert len(nx_graph.nodes) == 19, f'Expected 19 nodes. Found {nx_graph.node_feature.shape[0]}'
+
+        # Check edge counts
+        graph = dataset[i]
+        expected_edge_count = graph.n_edges/2  # Converting to bidirectional graph
+        edge_count = len(nx_graph.edges)
+        print('----', len(dataset.helpers.component_types))
+        assert edge_count == expected_edge_count, f'Expected {expected_edge_count} edges. Found {edge_count}'
+
+    # TODO: should I make sure they all differ by a single node?
+    # TODO: check the graph labels?

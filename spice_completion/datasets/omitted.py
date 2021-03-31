@@ -2,16 +2,11 @@ import numpy as np
 import networkx as nx
 from . import helpers as h
 from spektral.data import Dataset, Graph
-import deepsnap.graph
 import scipy.sparse as sp
 import random
-import torch
 component_types = h.component_types
 
-def ensure_no_nan(tensor):
-    nan_idx = torch.isnan(tensor).nonzero(as_tuple=True)
-    nan_count = nan_idx[0].shape[0]
-    assert nan_count == 0, 'nodes contain nans'
+from ogb.io import DatasetSaver
 
 class OmittedDataset(Dataset):
     def __init__(self, filenames, resample=True, shuffle=True, normalize=True, min_edge_count=0,
@@ -138,36 +133,15 @@ class OmittedDataset(Dataset):
         return [ graph for graph in graphs if edge_count(graph) >= self.min_edge_count ]
 
     def to_networkx(self):
-        graphs = []
-        for sgraph in self:
-            node_count = sgraph.x.shape[0]
-            nodes = ( (i, {'node_feature': torch.tensor(sgraph.x[i])}) for i in range(node_count) )
-            graph = nx.Graph()
-            graph.add_nodes_from(nodes)
-
-            row_idx, col_idx = sgraph.a.nonzero()
-            edges = list(zip(row_idx, col_idx))
-            graph.add_edges_from(edges)
-            edge_count = len(graph.edges)
-            assert 2 * edge_count == len(edges), f'Expected {len(edges)} edges. Found {edge_count}'
-            graphs.append(graph)
-
-        return graphs
+        return h.to_networkx(self)
 
     def to_deepsnap(self):
-        graphs = []
-        nxgraphs = self.to_networkx()
-        src_graphs = zip((sgraph for sgraph in self), nxgraphs)
+        return h.to_deepsnap(self)
 
-        for (sgraph, nxgraph) in src_graphs:
-            label = torch.tensor([sgraph.y.argmax()])
-            node_features = torch.tensor(sgraph.x)
-            ensure_no_nan(node_features)
-
-            deepsnap.graph.Graph.add_graph_attr(nxgraph, 'graph_label', label)
-            graphs.append(deepsnap.graph.Graph(nxgraph))
-
-        return graphs
+    def to_ogb(self, **kwargs):
+        saver = DatasetSaver(**kwargs)
+        # TODO: save a heterogeneous graph...
+        return saver
 
 def edge_count(graph):
     row_idx, col_idx = graph.a.nonzero()

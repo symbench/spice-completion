@@ -1,6 +1,7 @@
 """
     This creates a dataset where X is the graph where one component has been removed.
-    "Action nodes" have been added for the possible actions to take.
+    "Action nodes" have been added for the possible actions to take and link prediction
+    should be performed between all nodes and all possible (node) connections.
 """
 import numpy as np
 import random
@@ -12,9 +13,8 @@ import itertools
 all_component_types = h.component_types
 embedding_size = len(all_component_types) + 1
 action_index = len(all_component_types)
-np.set_printoptions(threshold=100000)
 
-class OmittedWithActionsDataset(Dataset):
+class PrototypeLinkDataset(Dataset):
     def __init__(self, filenames, resample=True, shuffle=True, normalize=True, **kwargs):
         self.filenames = h.valid_netlist_sources(filenames)
         self.resample = resample
@@ -88,7 +88,8 @@ class OmittedWithActionsDataset(Dataset):
         node_types = np.argmax(nodes > 0.99999, axis=1)
         return node_types
 
-    def load_graph(self, components, adj, omitted_idx):
+    @staticmethod
+    def load_graph(components, adj, omitted_idx):
         component_count = len(components)
         action_component_count = len(all_component_types)
         total_components = component_count + action_component_count - 1
@@ -114,14 +115,6 @@ class OmittedWithActionsDataset(Dataset):
 
         expanded_adj = np.zeros((x.shape[0], x.shape[0]))
         expanded_adj[0:adj.shape[0], 0:adj.shape[1]] = adj
-        # add connectivity to the action nodes (unidirectional)
-        expanded_adj[:component_count,action_indices] = 1
-        expanded_adj[omitted_idx, :] = 0
-
-        # labels... -1 for nodes to mask
-        y = np.zeros((total_components,))
-        y[np.arange(component_types.size)] = -1
-        y[omitted_idx] = 1
 
         # if self.shuffle:
             # indices = np.arange(x.shape[0])
@@ -131,7 +124,7 @@ class OmittedWithActionsDataset(Dataset):
             # expanded_adj = np.take(expanded_adj, indices, axis=0)
 
         a = sp.csr_matrix(expanded_adj)
-        return Graph(x=x, a=a, y=y)
+        return Graph(x=x, a=a)
 
     def load_graphs(self, filename):
         (components, adj) = h.netlist_as_graph(filename)
@@ -139,4 +132,4 @@ class OmittedWithActionsDataset(Dataset):
         return [ self.load_graph(components, adj, omitted_idx) for omitted_idx in range(count) ]
 
 def load(filenames, **kwargs):
-    return OmittedWithActionsDataset(filenames, **kwargs)
+    return PrototypeLinkDataset(filenames, **kwargs)

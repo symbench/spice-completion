@@ -4,6 +4,8 @@ from PySpice.Spice.Parser import SpiceParser
 from PySpice.Spice import BasicElement
 from PySpice.Spice.Netlist import Node
 import os
+import torch
+import deepsnap.graph
 
 component_types = [
     'unknown',
@@ -104,3 +106,50 @@ def component_index_name(idx):
     if type(component) is not str:
         return component.__name__
     return component
+
+def ensure_no_nan(tensor):
+    nan_idx = torch.isnan(tensor).nonzero(as_tuple=True)
+    nan_count = nan_idx[0].shape[0]
+    assert nan_count == 0, 'nodes contain nans'
+
+def to_networkx(dataset):
+    graphs = []
+    for sgraph in dataset:
+        node_count = sgraph.x.shape[0]
+        nodes = ( (i, {'node_feature': torch.tensor(sgraph.x[i])}) for i in range(node_count) )
+        graph = nx.Graph()
+        graph.add_nodes_from(nodes)
+
+        row_idx, col_idx = sgraph.a.nonzero()
+        edges = list(zip(row_idx, col_idx))
+        graph.add_edges_from(edges)
+        edge_count = len(graph.edges)
+        if 2 * edge_count != len(edges):
+            print('edges', edges)
+            print('(sorted) edges:')
+            print(sorted([ sorted(edge) for edge in edges], key=lambda p: p[0] + p[1]/100))
+            print('graph.edges:')
+            print(sorted([ sorted(edge) for edge in graph.edges], key=lambda p: p[0] + p[1]/100))
+            #print(graph.edges)
+
+        assert 2 * edge_count == len(edges), f'Expected {len(edges)} edges. Found {edge_count}'
+        graphs.append(graph)
+
+    return graphs
+
+def to_deepsnap(dataset):
+    graphs = []
+    nxgraphs = to_networkx(dataset)
+    src_graphs = zip((sgraph for sgraph in dataset), nxgraphs)
+
+    for (sgraph, nxgraph) in src_graphs:
+        node_features = torch.tensor(sgraph.x)
+        ensure_no_nan(node_features)
+
+        if sgraph.y is not None:
+            label = torch.tensor([sgraph.y.argmax()])
+            deepsnap.graph.Graph.add_graph_attr(nxgraph, 'graph_label', label)
+
+        graphs.append(deepsnap.graph.Graph(nxgraph))
+
+    return graphs
