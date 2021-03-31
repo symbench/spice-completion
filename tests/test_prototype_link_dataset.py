@@ -64,5 +64,13 @@ def test_to_deepsnap():
         edge_count = ds_graph.edge_index.shape[1]
         assert edge_count == expected_edge_count, f'Expected {expected_edge_count} edges. Found {edge_count}'
 
-# Tests:
-#  - [ ] should not modify data during inference
+def test_dont_omit_for_inference():
+    source = open(filename, 'rb').read().decode('utf-8', 'ignore')
+    (components, adj) = h.netlist_as_graph(source)
+    dataset = PrototypeLinkDataset(['LT1001_TA05.net'], resample=False, train=False)
+
+    assert len(dataset) == 1
+    graph = dataset[0]
+    expected_node_count = len(components) + len(h.component_types)
+
+    assert graph.n_nodes == expected_node_count 

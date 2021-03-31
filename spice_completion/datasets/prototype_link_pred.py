@@ -89,13 +89,15 @@ class PrototypeLinkDataset(Dataset):
         return node_types
 
     @staticmethod
-    def load_graph(components, adj, omitted_idx):
+    def load_graph(components, adj, omitted_idx=None):
         component_count = len(components)
         action_component_count = len(all_component_types)
-        total_components = component_count + action_component_count - 1
+        if omitted_idx is not None:
+            total_components = component_count + action_component_count - 1
+        else:
+            total_components = component_count + action_component_count
 
         component_types = np.array([ h.get_component_type_index(c) for c in components ])
-        omitted_type = component_types[omitted_idx]
 
         # nodes...
         x = np.zeros((total_components, embedding_size))
@@ -105,10 +107,17 @@ class PrototypeLinkDataset(Dataset):
         action_offset = component_types.size
         num_actions = len(all_component_types)
         action_indices = np.zeros(num_actions).astype(int)
-        action_indices[0] = omitted_idx
-        action_indices[1:] = np.arange(action_offset, action_offset + num_actions - 1)
-        action_types = [idx for idx in range(len(all_component_types)) if idx != omitted_type]
-        action_types.insert(0, omitted_type)
+        if omitted_idx is not None:
+            action_indices[0] = omitted_idx
+            action_indices[1:] = np.arange(action_offset, action_offset + num_actions - 1)
+
+            omitted_type = component_types[omitted_idx]
+            action_types = [idx for idx in range(len(all_component_types)) if idx != omitted_type]
+            action_types.insert(0, omitted_type)
+        else:
+            action_indices = np.arange(action_offset, action_offset + num_actions)
+            action_types = [idx for idx in range(len(all_component_types))]
+
         action_types = np.array(action_types).astype(int)
         x[action_indices, action_index] = 1
         x[action_indices, action_types] = 1
@@ -126,10 +135,15 @@ class PrototypeLinkDataset(Dataset):
         a = sp.csr_matrix(expanded_adj)
         return Graph(x=x, a=a)
 
-    def load_graphs(self, filename):
-        (components, adj) = h.netlist_as_graph(filename)
-        count = len(components)
-        return [ self.load_graph(components, adj, omitted_idx) for omitted_idx in range(count) ]
+    def load_graphs(self, source):
+        (components, adj) = h.netlist_as_graph(source)
+        if self.train:
+            count = len(components)
+            graphs = ( self.load_graph(components, adj, omitted_idx) for omitted_idx in range(count) )
+        else:
+            graphs = [ self.load_graph(components, adj) ]
+        return graphs
+
 
 def load(filenames, **kwargs):
     return PrototypeLinkDataset(filenames, **kwargs)
