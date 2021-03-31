@@ -15,15 +15,18 @@ embedding_size = len(all_component_types) + 1
 action_index = len(all_component_types)
 
 class PrototypeLinkDataset(Dataset):
-    def __init__(self, filenames, resample=True, shuffle=True, normalize=True, train=True, **kwargs):
+    def __init__(self, filenames, resample=True, normalize=True, train=True, mean=None, std=None, **kwargs):
         self.filenames = h.valid_netlist_sources(filenames)
         self.resample = resample
-        self.shuffle = shuffle
         self.normalize = normalize
         self.train = train
+        if normalize:
+            self.mean = mean
+            self.std = std
+        else:
+            self.mean = 0
+            self.std = 1
         self.epsilon = 0.
-        self.mean = 0
-        self.std = 1
         super().__init__(**kwargs)
 
     def read(self):
@@ -66,17 +69,23 @@ class PrototypeLinkDataset(Dataset):
         return (graph_nodes * (self.std + self.epsilon)) + self.mean
 
     def normalize_graphs(self, graphs):
-        node_count = sum(( graph.x.shape[0] for graph in graphs ))
-        graph_nodes = np.concatenate([ graph.x for graph in graphs ], axis=0)
-        mean = np.sum(graph_nodes, axis=0) / node_count
-        residuals = graph_nodes - mean
-        std = np.sum(residuals, axis=0) / node_count
-        for graph in graphs:
-            graph.x = (graph.x - mean) / (std + self.epsilon)
+        if self.mean is None or self.std is None:
+            node_count = sum(( graph.x.shape[0] for graph in graphs ))
+            graph_nodes = np.concatenate([ graph.x for graph in graphs ], axis=0)
+            mean = np.sum(graph_nodes, axis=0) / node_count
+            residuals = graph_nodes - mean
+            raw_std = np.sum(residuals, axis=0) / node_count
+            nonzero_idx = raw_std.nonzero()[0]
+            std = np.ones(raw_std.shape)
+            std[nonzero_idx] = raw_std[nonzero_idx]
+            self.mean = mean
+            self.std = std
 
-        self.mean = mean
-        self.std = std
+        for graph in graphs:
+            graph.x = (graph.x - self.mean) / (self.std + self.epsilon)
+
         return graphs
+
 
     def graph_label_type(self, graph):
         label_idx = np.argmax(graph.y)
