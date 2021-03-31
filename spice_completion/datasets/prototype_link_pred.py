@@ -15,11 +15,12 @@ embedding_size = len(all_component_types) + 1
 action_index = len(all_component_types)
 
 class PrototypeLinkDataset(Dataset):
-    def __init__(self, filenames, resample=True, shuffle=True, normalize=True, **kwargs):
+    def __init__(self, filenames, resample=True, shuffle=True, normalize=True, train=True, **kwargs):
         self.filenames = h.valid_netlist_sources(filenames)
         self.resample = resample
         self.shuffle = shuffle
         self.normalize = normalize
+        self.train = train
         self.epsilon = 0.
         self.mean = 0
         self.std = 1
