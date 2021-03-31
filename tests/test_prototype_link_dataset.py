@@ -74,3 +74,15 @@ def test_dont_omit_for_inference():
     expected_node_count = len(components) + len(h.component_types)
 
     assert graph.n_nodes == expected_node_count 
+
+def test_inference_proto_count():
+    source = open(filename, 'rb').read().decode('utf-8', 'ignore')
+    (components, adj) = h.netlist_as_graph(source)
+    dataset = PrototypeLinkDataset(['LT1001_TA05.net'], resample=False, train=False, normalize=False)
+
+    graph = dataset[0]
+
+    print(graph.x[:,-1])
+    proto_count = len(graph.x[:, -1].nonzero()[0])
+    print('proto_count', proto_count)
+    assert proto_count == len(h.component_types)
