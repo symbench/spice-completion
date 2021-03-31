@@ -57,12 +57,8 @@ def get_component_type_index(element):
     return component_types.index(element_type)
 
 
-def netlist_as_graph(textfile):
-    parser = SpiceParser(source=textfile)
-    circuit = parser.build_circuit()
+def components(circuit):
     component_list = []
-    adj = {}
-
     for element in circuit.elements:
         if element not in component_list:
             component_list.append(element)
@@ -71,11 +67,22 @@ def netlist_as_graph(textfile):
         for node in nodes:
             if node not in component_list:
                 component_list.append(node)
+    return component_list
 
+
+def netlist_as_graph(textfile):
+    parser = SpiceParser(source=textfile)
+    circuit = parser.build_circuit()
+    component_list = components(circuit)
+    adj = {}
+
+    for element in circuit.elements:
         element_id = component_list.index(element)
+
         if element_id not in adj:
             adj[element_id] = []
 
+        nodes = [ pin.node for pin in element.pins ]
         node_ids = [component_list.index(node) for node in nodes]
         adj[element_id].extend(node_ids)
 
