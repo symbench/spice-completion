@@ -2,6 +2,7 @@ import spice_completion.datasets as datasets
 import spice_completion.datasets.helpers as h
 from spice_completion.datasets import PrototypeLinkDataset
 import numpy as np
+import tensorflow as tf
 
 expected_label_count = {1: 4, 2: 2, 3:3, 4: 1, 5: 1, 6: 9}
 filename = 'LT1001_TA05.net'
@@ -23,6 +24,17 @@ def test_omitted_node_connected():
     for omitted_idx in range(len(components)):
         graph = PrototypeLinkDataset.load_graph(components, adj, omitted_idx)
         assert len(graph.a[omitted_idx].nonzero()[0]) > 0
+
+def test_action_nodes_types():
+    dataset = PrototypeLinkDataset(['LT1001_TA05.net'], resample=False)
+    for graph in dataset:
+        nodes = dataset.unnormalize(graph.x)
+        proto_idx = tf.squeeze(tf.where(nodes[:,-1] == 1))
+        protos = tf.gather(nodes, proto_idx)
+        reduced = tf.reduce_sum(protos, axis=0)
+        type_counts = reduced[0:-1]
+        duplicate_idx = tf.squeeze(tf.where(type_counts > 1))
+        assert duplicate_idx.shape[0] == 0
 
 def test_action_nodes_disconnected():
     source = open(filename, 'rb').read().decode('utf-8', 'ignore')
