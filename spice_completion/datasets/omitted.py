@@ -132,12 +132,6 @@ class OmittedDataset(Dataset):
             graphs = [ self.load_graph(components, adj, shuffle=self.shuffle) ]
         return [ graph for graph in graphs if edge_count(graph) >= self.min_edge_count ]
 
-    def to_networkx(self):
-        return h.to_networkx(self)
-
-    def to_deepsnap(self):
-        return h.to_deepsnap(self)
-
     def to_ogb(self, **kwargs):
         saver = DatasetSaver(**kwargs)
         # TODO: save a heterogeneous graph...

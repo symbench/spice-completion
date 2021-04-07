@@ -139,12 +139,16 @@ def to_networkx(dataset):
             print(sorted([ sorted(edge) for edge in graph.edges], key=lambda p: p[0] + p[1]/100))
             #print(graph.edges)
 
+        print('expected count:', len(edges), f'({2 * edge_count})')
         assert 2 * edge_count == len(edges), f'Expected {len(edges)} edges. Found {edge_count}'
         graphs.append(graph)
 
     return graphs
 
 def to_deepsnap(dataset):
+    if 'to_deepsnap' in dir(dataset):
+        return dataset.to_deepsnap()
+
     graphs = []
     nxgraphs = to_networkx(dataset)
     src_graphs = zip((sgraph for sgraph in dataset), nxgraphs)

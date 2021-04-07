@@ -9,6 +9,8 @@ from . import helpers as h
 from spektral.data import Dataset, Graph
 import scipy.sparse as sp
 import itertools
+import torch
+import deepsnap
 
 all_component_types = h.component_types
 embedding_size = len(all_component_types) + 1
@@ -152,6 +154,24 @@ class PrototypeLinkDataset(Dataset):
             graphs = ( self.load_graph(components, adj, omitted_idx) for omitted_idx in range(count) )
         else:
             graphs = [ self.load_graph(components, adj) ]
+        return graphs
+
+    def to_deepsnap(self):
+        graphs = []
+        nxgraphs = h.to_networkx(self)
+        src_graphs = zip((sgraph for sgraph in self), nxgraphs)
+
+        for (sgraph, nxgraph) in src_graphs:
+            node_features = torch.tensor(sgraph.x)
+            h.ensure_no_nan(node_features)
+
+            # FIXME: set the edge_labels
+            edge_label_index = torch.tensor([[0, 0, 0, 0], [1, 2, 3, 4]])
+            edge_label = torch.ones((4,))
+            graph = deepsnap.graph.Graph(nxgraph, edge_label_index=edge_label_index, edge_label=edge_label)
+
+            graphs.append(graph)
+
         return graphs
 
 
