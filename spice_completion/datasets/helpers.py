@@ -94,6 +94,20 @@ def netlist_as_graph(textfile):
     adj = nx.adjacency_matrix(nx.from_dict_of_lists(adj)).toarray()
     return component_list, adj
 
+def get_nodes_edges(circuit):
+    component_list = components(circuit)
+    edges = []
+
+    for element in circuit.elements:
+        element_id = component_list.index(element)
+
+        nodes = [ pin.node for pin in element.pins ]
+        node_ids = [component_list.index(node) for node in nodes]
+        edges.extend([ (element_id, node_id, {'pin': i}) for (i, node_id) in enumerate(node_ids) ])
+
+    nodes = [ (i, {'component': component}) for (i, component) in enumerate(component_list) ]
+    return nodes, edges
+
 def valid_netlist_sources(files):
     netlists = ( open(f, 'rb').read().decode('utf-8', 'ignore') for f in files )
     return ( text for text in netlists if is_valid_netlist(text) )

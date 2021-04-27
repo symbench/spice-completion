@@ -7,3 +7,5 @@ from .omitted_with_actions import OmittedWithActionsDataset
 from .prototype_link_pred import PrototypeLinkDataset
 from .basic import LinkDataset
 from . import helpers
+from . import augmenters
+from . import netlist_with_edge_labels
